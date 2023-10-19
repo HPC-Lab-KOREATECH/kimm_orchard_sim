@@ -33,5 +33,6 @@ sudo apt install ros-humble-tf2-tools ros-humble-tf-transformations
 # tf pdf 생성
 ```ros2 run tf2_tools view_frames```
 
-
-
+# 모터 제어 토픽 
+``` ros2 topic pub /forward_position_controller/commands std_msgs/msg/Float64MultiArray "{data: [0.9, 0.9, 0.0, 0.0]}"
+ros2 topic pub /forwarvelocity_controller/commands std_msgs/msg/Float64MultiArray "{data: [3.0, 3.0, 3.0, 3.0]}"}" ```
