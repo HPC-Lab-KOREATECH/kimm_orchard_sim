@@ -5,12 +5,12 @@ import xacro
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, ExecuteProcess
 from launch.substitutions import LaunchConfiguration, Command
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import PythonExpression
 
-from launch_ros.actions import Node
+from launch_ros.actions import Node, SetParameter
 
 def get_xacro_to_doc(xacro_file_path, mappings):
     doc = xacro.parse(open(xacro_file_path))
@@ -82,6 +82,71 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(join(gazebo_share, "launch", "gazebo.launch.py"))
     )
 
+    # minwoo's code -> yaml param load
+    # controller_param_path = join(kimm_orchard_sim_path, 'config', 'controller.yaml')
+
+    # controller = Node(
+    #         package='controller_manager',
+    #         executable='spawner.py',
+    #         name='controller_spawner',
+    #         output='screen',
+    #         arguments=['joint_state_controller', 'four_wheel_steering_controller'],
+    #         parameters=[controller_param_path]
+    #     ),
+    
+    # SetParameter(name='controller_configuration', value=controller_param_path),
+
+    # Spawn the controllers
+    # joint_state_controller = Node(
+    #     package='controller_manager',
+    #     executable='spawner.py',
+    #     name='controller_spawner',
+    #     output='screen',
+    #     arguments=[
+    #         'joint_state_controller',
+    #         '--controller-manager', 'controller_manager',  # assuming the name of the controller manager node
+    #         '--param-file', LaunchConfiguration('controller_configuration'),
+    #         '-u'  # unload-on-kill option
+    #     ]
+    # ),
+    # Node(
+    #     package='controller_manager',
+    #     executable='spawner.py',
+    #     name='four_wheel_steering_spawner',
+    #     output='screen',
+    #     arguments=[
+    #         'four_wheel_steering_controller',
+    #         '--controller-manager', 'controller_manager',  # assuming the name of the controller manager node
+    #         '--param-file', LaunchConfiguration('controller_configuration'),
+    #         '-u'  # unload-on-kill option
+    #     ]
+    # ),
+    
+    forward_position_controller = ExecuteProcess( 
+            cmd=['ros2', 'control', 'load_controller', '--set-state', 'active', 'forward_position_controller'], output='screen'
+        )
+
+    forward_velocity_controller = ExecuteProcess(
+            cmd=['ros2', 'control', 'load_controller', '--set-state', 'active', 'forward_velocity_controller'], output='screen'
+        )
+
+    joint_state_broadcaster = ExecuteProcess(
+            cmd=['ros2', 'control', 'load_controller', '--set-state', 'active', 'joint_state_broadcaster'], output='screen'
+        )
+    
+    rqt_robot_steering = Node(
+            package='rqt_robot_steering',
+            executable='rqt_robot_steering',
+            name='rqt_robot_steering',
+            output='screen',
+            parameters=[
+                {'default_topic': '/four_wheel_steering_controller/cmd_vel'},
+                {'default_vx_max': 5.0},
+                {'default_vx_min': -5.0},
+                {'default_vw_max': 3.69},
+                {'default_vw_min': -3.69}
+            ]
+        )
     return LaunchDescription([
         # Declare launch arguments
         DeclareLaunchArgument('world', default_value = world_file),
@@ -97,7 +162,17 @@ def generate_launch_description():
         DeclareLaunchArgument("odometry_source", default_value = odometry_source),
         DeclareLaunchArgument("robot_namespace", default_value = robot_namespace),
         # DeclareLaunchArgument('robot_description', default_value=doc.toxml()),
+
+        # DeclareLaunchArgument('controller_configuration', default_value=controller_param_path),
+        
         gazebo,
         robot_state_publisher,
-        spawn_entity
+        spawn_entity,
+
+        forward_position_controller,
+        forward_velocity_controller,
+        joint_state_broadcaster,
+        # controller,
+        # joint_state_controller, 
+        rqt_robot_steering,
     ])
