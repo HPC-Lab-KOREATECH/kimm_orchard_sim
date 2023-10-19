@@ -25,15 +25,25 @@ sudo apt install ros-humble-tf2-tools ros-humble-tf-transformations
 ```
 
 # gazebo simulation 실행
-```ros2 launch kimm_orchard_sim gazebo.launch.py```
+```
+ros2 launch kimm_orchard_sim gazebo.launch.py
+```
 
 # joint_state_publisher_gui 실행
-```ros2 run joint_state_publisher_gui joint_state_publisher_gui```
+```
+ros2 run joint_state_publisher_gui joint_state_publisher_gui
+```
 
 # tf pdf 생성
-```ros2 run tf2_tools view_frames```
+```
+ros2 run tf2_tools view_frames
+```
 
 # 모터 제어 토픽 
-``` ros2 topic pub /forward_position_controller/commands std_msgs/msg/Float64MultiArray "{data: [0.9, 0.9, 0.0, 0.0]}"```
+``` 
+ros2 topic pub /forward_position_controller/commands std_msgs/msg/Float64MultiArray "{data: [0.9, 0.9, 0.0, 0.0]}"
+```
 
-```ros2 topic pub /forwarvelocity_controller/commands std_msgs/msg/Float64MultiArray "{data: [3.0, 3.0, 3.0, 3.0]}"}" ```
+```
+ros2 topic pub /forwarvelocity_controller/commands std_msgs/msg/Float64MultiArray "{data: [3.0, 3.0, 3.0, 3.0]}"}" 
+```
