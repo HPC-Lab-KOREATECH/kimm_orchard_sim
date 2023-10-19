@@ -25,7 +25,7 @@ sudo apt install ros-humble-tf2-tools ros-humble-tf-transformations
 ```
 
 # gazebo simulation 실행
-```ros2 launch bcr_bot gazebo.launch.py```
+```ros2 launch kimm_orchard_sim gazebo.launch.py```
 
 # joint_state_publisher_gui 실행
 ```ros2 run joint_state_publisher_gui joint_state_publisher_gui```
