@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <robot name="ranger_mini" xmlns:xacro="http://ros.org/wiki/xacro">
   <xacro:include filename="$(find kimm_orchard_sim)/urdf/ranger_mini.gazebo.xacro"/>
+
   <link
     name="base_link">
     <inertial>
@@ -474,6 +475,50 @@
       <limit effort="1.5" velocity="20"/>
   </joint>
 
+  <!-- MACRO -->
+
+  <xacro:macro name="box_inertia" params="m x y z">
+      <inertia ixx="${m * (y * y + z * z) / 12}" ixy="0" ixz="0" iyy="${m * (x * x + z * z) / 12}" iyz="0" izz="${m * (y * y + x * x) / 12}" />
+  </xacro:macro>
+
+    <!-- KINECT CAMERA -->
+
+  <link name="kinect_camera">
+      <collision>
+          <origin xyz="0 0 0" rpy="0 0 0" />
+          <geometry>
+              <box size="0.07 0.3 0.09"/>
+          </geometry>
+      </collision>
+
+      <visual>
+          <origin xyz="0 0 0" rpy="0 0 0" />
+          <geometry>
+              <mesh filename="file://$(find kimm_orchard_sim)/meshes/kinect/d415.dae"/>
+          </geometry>
+          <material name="black"/>
+      </visual>
+
+      <inertial>
+          <mass value="0.01"/>
+          <xacro:box_inertia m="0.01" x="0.07" y="0.3" z = "0.09"/>
+      </inertial>
+    </link>
+
+    <joint name="kinect_camera_joint" type="fixed">
+        <origin rpy="0 0 0" xyz="0.36 0 0.1"/>
+        <parent link="base_link"/>
+        <child link="kinect_camera"/>
+    </joint>
+
+    <link name="kinect_camera_optical"/>
+
+    <joint name="kinect_camera_optical_joint" type="fixed">
+        <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
+        <parent link="kinect_camera"/>
+        <child link="kinect_camera_optical"/>
+    </joint>
+
 
 	<transmission name="front_left_steering_trans">
       <type>transmission_interface/SimpleTransmission</type>
@@ -650,4 +695,6 @@
       <parameters>/home/minwoo/ros2_ws/install/kimm_orchard_sim/share/kimm_orchard_sim/config/controller.yaml</parameters>
     </plugin>
   </gazebo>
+
+  
 </robot>

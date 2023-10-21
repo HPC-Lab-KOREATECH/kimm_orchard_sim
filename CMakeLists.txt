@@ -4,7 +4,7 @@ project(kimm_orchard_sim)
 find_package(ament_cmake REQUIRED)
 
 
-install(DIRECTORY config launch meshes models urdf worlds rviz 
+install(DIRECTORY map config launch meshes models urdf worlds rviz 
     DESTINATION share/${PROJECT_NAME}/
 )
 

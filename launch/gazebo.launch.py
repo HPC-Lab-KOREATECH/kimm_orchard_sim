@@ -33,12 +33,13 @@ def generate_launch_description():
     two_d_lidar_enabled = LaunchConfiguration("two_d_lidar_enabled", default=True)
     odometry_source = LaunchConfiguration("odometry_source", default="world")
     robot_namespace = LaunchConfiguration("robot_namespace", default='')
-    world_file = LaunchConfiguration("world_file", default = join(bcr_bot_path, 'worlds', 'small_warehouse.sdf'))
-    
+    world_file = LaunchConfiguration("world_file", default = join(kimm_orchard_sim_path, 'worlds', 'empty.sdf'))
+    #world_file = LaunchConfiguration("world_file", default = join(bcr_bot_path, 'worlds', 'small_warehouse.sdf'))
 
     # Path to the Xacro file
     xacro_path = join(kimm_orchard_sim_path, 'urdf', 'ranger_mini.xacro')
     #doc = get_xacro_to_doc(xacro_path, {"wheel_odom_topic": "odom", "sim_gazebo": "true", "two_d_lidar_enabled": "true", "camera_enabled": "true"})
+    map_xacro_path = join(kimm_orchard_sim_path, 'map', 'urdf', 'orchard_geometry.urdf')
 
     # Launch the robot_state_publisher node
     robot_state_publisher = Node(
@@ -76,51 +77,27 @@ def generate_launch_description():
         ]
     )
 
+    spawn_map = Node(
+        package='gazebo_ros',
+        executable='spawn_entity.py',
+        output='screen',
+        arguments=[
+            '-file', map_xacro_path,
+            '-entity', PythonExpression(['"', robot_namespace, 'orchard"']), #default enitity name _bcr_bot
+            '-z', "0.15",
+            '-x', "0",
+            '-y', "0",
+            '-Y', orientation_yaw
+        ]
+    )
+
     # Include the Gazebo launch file
     gazebo_share = get_package_share_directory("gazebo_ros")
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(join(gazebo_share, "launch", "gazebo.launch.py"))
     )
 
-    # minwoo's code -> yaml param load
-    # controller_param_path = join(kimm_orchard_sim_path, 'config', 'controller.yaml')
-
-    # controller = Node(
-    #         package='controller_manager',
-    #         executable='spawner.py',
-    #         name='controller_spawner',
-    #         output='screen',
-    #         arguments=['joint_state_controller', 'four_wheel_steering_controller'],
-    #         parameters=[controller_param_path]
-    #     ),
-    
-    # SetParameter(name='controller_configuration', value=controller_param_path),
-
-    # Spawn the controllers
-    # joint_state_controller = Node(
-    #     package='controller_manager',
-    #     executable='spawner.py',
-    #     name='controller_spawner',
-    #     output='screen',
-    #     arguments=[
-    #         'joint_state_controller',
-    #         '--controller-manager', 'controller_manager',  # assuming the name of the controller manager node
-    #         '--param-file', LaunchConfiguration('controller_configuration'),
-    #         '-u'  # unload-on-kill option
-    #     ]
-    # ),
-    # Node(
-    #     package='controller_manager',
-    #     executable='spawner.py',
-    #     name='four_wheel_steering_spawner',
-    #     output='screen',
-    #     arguments=[
-    #         'four_wheel_steering_controller',
-    #         '--controller-manager', 'controller_manager',  # assuming the name of the controller manager node
-    #         '--param-file', LaunchConfiguration('controller_configuration'),
-    #         '-u'  # unload-on-kill option
-    #     ]
-    # ),
+    # minwoo's code 
     
     forward_position_controller = ExecuteProcess( 
             cmd=['ros2', 'control', 'load_controller', '--set-state', 'active', 'forward_position_controller'], output='screen'
@@ -156,8 +133,8 @@ def generate_launch_description():
         DeclareLaunchArgument("camera_enabled", default_value = camera_enabled),
         DeclareLaunchArgument("stereo_camera_enabled", default_value = stereo_camera_enabled),
         DeclareLaunchArgument("two_d_lidar_enabled", default_value = two_d_lidar_enabled),
-        DeclareLaunchArgument("position_x", default_value="0.0"),
-        DeclareLaunchArgument("position_y", default_value="0.0"),
+        DeclareLaunchArgument("position_x", default_value="-1.7"),
+        DeclareLaunchArgument("position_y", default_value="1.4"),
         DeclareLaunchArgument("orientation_yaw", default_value="0.0"),
         DeclareLaunchArgument("odometry_source", default_value = odometry_source),
         DeclareLaunchArgument("robot_namespace", default_value = robot_namespace),
@@ -167,12 +144,10 @@ def generate_launch_description():
         
         gazebo,
         robot_state_publisher,
+        spawn_map,
         spawn_entity,
 
         forward_position_controller,
         forward_velocity_controller,
-        joint_state_broadcaster,
-        # controller,
-        # joint_state_controller, 
         rqt_robot_steering,
     ])
