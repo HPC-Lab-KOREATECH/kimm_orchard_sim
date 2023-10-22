@@ -85,10 +85,16 @@ def generate_launch_description():
             '-file', map_xacro_path,
             '-entity', PythonExpression(['"', robot_namespace, 'orchard"']), #default enitity name _bcr_bot
             '-z', "0.15",
-            '-x', "0",
-            '-y', "0",
+            '-x', "5.05",
+            '-y', "-15.2",
             '-Y', orientation_yaw
         ]
+    )
+
+    set_entity_state = Node(
+        package='kimm_orchard_sim',
+        executable='set_entity_state.py',
+        output='screen',
     )
 
     # Include the Gazebo launch file
@@ -124,6 +130,15 @@ def generate_launch_description():
                 {'default_vw_min': -3.69}
             ]
         )
+    
+    rviz = Node(
+		package='rviz2',
+		executable='rviz2',
+		name='rviz2',
+		output='screen',
+		arguments=['-d', join(kimm_orchard_sim_path, 'rviz', 'entire_setup.rviz')]
+	)
+
     return LaunchDescription([
         # Declare launch arguments
         DeclareLaunchArgument('world', default_value = world_file),
@@ -133,9 +148,9 @@ def generate_launch_description():
         DeclareLaunchArgument("camera_enabled", default_value = camera_enabled),
         DeclareLaunchArgument("stereo_camera_enabled", default_value = stereo_camera_enabled),
         DeclareLaunchArgument("two_d_lidar_enabled", default_value = two_d_lidar_enabled),
-        DeclareLaunchArgument("position_x", default_value="-1.7"),
-        DeclareLaunchArgument("position_y", default_value="1.4"),
-        DeclareLaunchArgument("orientation_yaw", default_value="0.0"),
+        DeclareLaunchArgument("position_x", default_value="0"),
+        DeclareLaunchArgument("position_y", default_value="0"),
+        DeclareLaunchArgument("orientation_yaw", default_value="0"),
         DeclareLaunchArgument("odometry_source", default_value = odometry_source),
         DeclareLaunchArgument("robot_namespace", default_value = robot_namespace),
         # DeclareLaunchArgument('robot_description', default_value=doc.toxml()),
@@ -150,4 +165,6 @@ def generate_launch_description():
         forward_position_controller,
         forward_velocity_controller,
         rqt_robot_steering,
+        rviz,
+        set_entity_state,
     ])

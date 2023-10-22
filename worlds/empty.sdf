@@ -40,5 +40,14 @@
                 </visual>
             </link>
         </model>
+
+        <plugin name="gazebo_ros_state" filename="libgazebo_ros_state.so">
+          <ros>
+            <namespace>/world</namespace>
+            <argument>model_states:=model_states_world</argument>
+            <argument>link_states:=link_states_plug</argument>
+          </ros>
+          <update_rate>1.0</update_rate>
+        </plugin>
     </world>
 </sdf> 
