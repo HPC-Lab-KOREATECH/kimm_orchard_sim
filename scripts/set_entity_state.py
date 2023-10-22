@@ -35,7 +35,7 @@ def main(args=None):
 
     x = -0.14
     y = -1.76
-    z = 0.4
+    z = 0.5
     roll = 0.0
     pitch = 0.0
     yaw = 1.57

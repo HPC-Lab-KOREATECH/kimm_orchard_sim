@@ -7,7 +7,6 @@ Panels:
         - /Global Options1
         - /Status1
         - /RobotModel1
-        - /RobotModel1/Status1
       Splitter Ratio: 0.5
     Tree Height: 357
   - Class: rviz_common/Selection
@@ -92,6 +91,11 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
+        imu_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
         kinect_camera:
           Alpha: 1
           Show Axes: false
@@ -121,6 +125,15 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
+        velodyne:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        velodyne_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
       Mass Properties:
         Inertia: false
         Mass: false
@@ -136,9 +149,31 @@ Visualization Manager:
         All Enabled: true
         base_link:
           Value: true
+        ffl_wheel_link:
+          Value: true
+        ffr_wheel_link:
+          Value: true
+        front_left_steering_link:
+          Value: true
+        front_right_steering_link:
+          Value: true
+        imu_link:
+          Value: true
         kinect_camera:
           Value: true
         kinect_camera_optical:
+          Value: true
+        rear_left_steering_link:
+          Value: true
+        rear_right_steering_link:
+          Value: true
+        rfl_wheel_link:
+          Value: true
+        rfr_wheel_link:
+          Value: true
+        velodyne:
+          Value: true
+        velodyne_base_link:
           Value: true
       Marker Scale: 1
       Name: TF
@@ -147,8 +182,25 @@ Visualization Manager:
       Show Names: false
       Tree:
         base_link:
+          front_left_steering_link:
+            ffl_wheel_link:
+              {}
+          front_right_steering_link:
+            ffr_wheel_link:
+              {}
+          imu_link:
+            {}
           kinect_camera:
             kinect_camera_optical:
+              {}
+          rear_left_steering_link:
+            rfl_wheel_link:
+              {}
+          rear_right_steering_link:
+            rfr_wheel_link:
+              {}
+          velodyne_base_link:
+            velodyne:
               {}
       Update Interval: 0
       Value: true
@@ -214,6 +266,40 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /kinect_camera/depth/image_raw
       Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz_default_plugins/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: Intensity
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Max Intensity: 0
+      Min Color: 0; 0; 0
+      Min Intensity: 0
+      Name: PointCloud2
+      Position Transformer: XYZ
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.009999999776482582
+      Style: Flat Squares
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /gazebo_ros_laser_controller/out
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -260,25 +346,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 4.504281997680664
+      Distance: 11.336917877197266
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.18518711626529694
-        Y: 0.08332619816064835
-        Z: 0.16595369577407837
+        X: 0.3292160630226135
+        Y: -0.09037801623344421
+        Z: -0.24483691155910492
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.29539787769317627
+      Pitch: 0.6003978252410889
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.290398120880127
+      Yaw: 3.3353965282440186
     Saved: ~
 Window Geometry:
   Displays:
