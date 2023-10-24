@@ -22,6 +22,26 @@ sudo apt-get install ros-humble-joint-state-publisher-gui
 sudo apt-get install ros-humble-rqt-robot-steering
 
 sudo apt install ros-humble-tf2-tools ros-humble-tf-transformations
+
+sudo apt install ros-humble-gazebo-*
+
+sudo apt install ros-humble-velodyne-gazebo-plugins
+
+sudo apt install python3-pip
+
+pip install transforms3d
+
+sudo apt install ros-humble-velodyne-gazebo-plugins
+```
+
+# First setup
+
+```
+cd ~/ros2_ws/src
+git clone <package>
+cd ~/ros2_ws/src/kimm_orchard_sim/map/urdf
+xacro orchard_geometry.urdf.xacro  > orchard_geometry.urdf
+cd ~/ros2_ws && colcon build --symlink-install
 ```
 
 # gazebo simulation 실행
@@ -45,5 +65,12 @@ ros2 topic pub /forward_position_controller/commands std_msgs/msg/Float64MultiAr
 ```
 
 ```
-ros2 topic pub /forwarvelocity_controller/commands std_msgs/msg/Float64MultiArray "{data: [3.0, 3.0, 3.0, 3.0]}"}" 
+ros2 topic pub /forward_velocity_controller/commands std_msgs/msg/Float64MultiArray "{data: [3.0, 3.0, 3.0, 3.0]}"
+```
+
+# 제자리 회전
+```
+ros2 topic pub /forward_position_controller/commands std_msgs/msg/Float64MultiArray "{data:[0.938, -0.938, -0.938, 0.938]}"
+
+ros2 topic pub /forward_velocity_controller/commands std_msgs/msg/Float64MultiArray "{data: [3.0, -3.0, 3.0, -3.0]}"
 ```

@@ -739,7 +739,7 @@
 
   <gazebo>
     <plugin name="gazebo_ros2_control" filename="libgazebo_ros2_control.so">
-      <parameters>/home/minwoo/ros2_ws/install/kimm_orchard_sim/share/kimm_orchard_sim/config/controller.yaml</parameters>
+      <parameters>$(find kimm_orchard_sim)/config/controller.yaml</parameters>
     </plugin>
   </gazebo>
 

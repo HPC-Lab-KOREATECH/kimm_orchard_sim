@@ -13,25 +13,25 @@
     <visual>
       <origin rpy="0 0 1.5707963267948966" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/minwoo/ros2_ws/install/kimm_orchard_sim/share/kimm_orchard_sim/map/meshes/orchard_world.dae"/>
+        <mesh filename="file:///home/hy/ros2_ws/install/kimm_orchard_sim/share/kimm_orchard_sim/map/meshes/orchard_world.dae"/>
       </geometry>
     </visual>
     <visual>
       <origin rpy="0 0 1.5707963267948966" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/minwoo/ros2_ws/install/kimm_orchard_sim/share/kimm_orchard_sim/map/meshes/orchard_trunks.dae"/>
+        <mesh filename="file:///home/hy/ros2_ws/install/kimm_orchard_sim/share/kimm_orchard_sim/map/meshes/orchard_trunks.dae"/>
       </geometry>
     </visual>
     <visual>
       <origin rpy="0 0 1.5707963267948966" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/minwoo/ros2_ws/install/kimm_orchard_sim/share/kimm_orchard_sim/map/meshes/orchard_leaves.dae"/>
+        <mesh filename="file:///home/hy/ros2_ws/install/kimm_orchard_sim/share/kimm_orchard_sim/map/meshes/orchard_leaves.dae"/>
       </geometry>
     </visual>
     <collision>
       <origin rpy="0 0 1.5707963267948966" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/minwoo/ros2_ws/install/kimm_orchard_sim/share/kimm_orchard_sim/map/meshes/orchard_world.dae"/>
+        <mesh filename="file:///home/hy/ros2_ws/install/kimm_orchard_sim/share/kimm_orchard_sim/map/meshes/orchard_world.dae"/>
       </geometry>
       <surface>
         <friction>
@@ -45,7 +45,7 @@
     <collision>
       <origin rpy="0 0 1.5707963267948966" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/minwoo/ros2_ws/install/kimm_orchard_sim/share/kimm_orchard_sim/map/meshes/orchard_trunks.dae"/>
+        <mesh filename="file:///home/hy/ros2_ws/install/kimm_orchard_sim/share/kimm_orchard_sim/map/meshes/orchard_trunks.dae"/>
       </geometry>
     </collision>
   </link>

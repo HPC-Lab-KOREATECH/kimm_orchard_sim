@@ -19,7 +19,7 @@ def get_xacro_to_doc(xacro_file_path, mappings):
 
 def generate_launch_description():
     # Get bcr_bot package's share directory path
-    bcr_bot_path = get_package_share_directory('bcr_bot')
+    # bcr_bot_path = get_package_share_directory('bcr_bot')
     kimm_orchard_sim_path = get_package_share_directory('kimm_orchard_sim')
     
 
@@ -113,9 +113,9 @@ def generate_launch_description():
             cmd=['ros2', 'control', 'load_controller', '--set-state', 'active', 'forward_velocity_controller'], output='screen'
         )
 
-    joint_state_broadcaster = ExecuteProcess(
-            cmd=['ros2', 'control', 'load_controller', '--set-state', 'active', 'joint_state_broadcaster'], output='screen'
-        )
+    # joint_state_broadcaster = ExecuteProcess(
+    #         cmd=['ros2', 'control', 'load_controller', '--set-state', 'active', 'joint_state_broadcaster'], output='screen'
+    #     )
     
     rqt_robot_steering = Node(
             package='rqt_robot_steering',

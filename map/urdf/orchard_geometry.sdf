@@ -18,7 +18,7 @@
         <geometry>
           <mesh>
             <scale>1 1 1</scale>
-            <uri>file:///home/minwoo/ros2_ws/install/kimm_orchard_sim/share/kimm_orchard_sim/map/meshes/orchard_world.dae</uri>
+            <uri>file://$(find kimm_orchard_sim)/map/meshes/orchard_world.dae</uri>
           </mesh>
         </geometry>
       </collision>
@@ -27,7 +27,7 @@
         <geometry>
           <mesh>
             <scale>1 1 1</scale>
-            <uri>file:///home/minwoo/ros2_ws/install/kimm_orchard_sim/share/kimm_orchard_sim/map/meshes/orchard_trunks.dae</uri>
+            <uri>file://$(find kimm_orchard_sim)/map/meshes/orchard_trunks.dae</uri>
           </mesh>
         </geometry>
       </collision>
@@ -36,7 +36,7 @@
         <geometry>
           <mesh>
             <scale>1 1 1</scale>
-            <uri>file:///home/minwoo/ros2_ws/install/kimm_orchard_sim/share/kimm_orchard_sim/map/meshes/orchard_world.dae</uri>
+            <uri>file://$(find kimm_orchard_sim)/map/meshes/orchard_world.dae</uri>
           </mesh>
         </geometry>
       </visual>
@@ -45,7 +45,7 @@
         <geometry>
           <mesh>
             <scale>1 1 1</scale>
-            <uri>file:///home/minwoo/ros2_ws/install/kimm_orchard_sim/share/kimm_orchard_sim/map/meshes/orchard_trunks.dae</uri>
+            <uri>file://$(find kimm_orchard_sim)/map/meshes/orchard_trunks.dae</uri>
           </mesh>
         </geometry>
       </visual>
@@ -54,7 +54,7 @@
         <geometry>
           <mesh>
             <scale>1 1 1</scale>
-            <uri>file:///home/minwoo/ros2_ws/install/kimm_orchard_sim/share/kimm_orchard_sim/map/meshes/orchard_leaves.dae</uri>
+            <uri>file://$(find kimm_orchard_sim)/map/meshes/orchard_leaves.dae</uri>
           </mesh>
         </geometry>
       </visual>
