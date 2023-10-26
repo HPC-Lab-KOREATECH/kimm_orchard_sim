@@ -10,20 +10,18 @@ settings = termios.tcgetattr(sys.stdin)
 msg = """
 Reading from the keyboard  and Publishing to Twist!
 ---------------------------
-Moving around:
+Opposite phase & Pivot turn:
    q    w    e 
    a    k    d
    z    s    c
 
-For Holonomic mode (strafing), hold down the shift key:
+In-Phase mode:
 ---------------------------
    Q    W    E
    A    K    D
    Z    S    C
 
-q/e : increase/decrease max speeds by 10%
-
-anything else : stop
+k/K : stop
 
 CTRL-C to quit
 
