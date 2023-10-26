@@ -138,6 +138,13 @@ def generate_launch_description():
 		output='screen',
 		arguments=['-d', join(kimm_orchard_sim_path, 'rviz', 'entire_setup.rviz')]
 	)
+    
+    controller_teleop = Node(
+        package='kimm_orchard_sim',
+        executable='ranger_controller.py',
+        name='commander',
+        output='screen'
+    )
 
     return LaunchDescription([
         # Declare launch arguments
@@ -167,4 +174,5 @@ def generate_launch_description():
         rqt_robot_steering,
         rviz,
         set_entity_state,
+        controller_teleop
     ])

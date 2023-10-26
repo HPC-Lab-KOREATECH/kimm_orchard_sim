@@ -24,7 +24,9 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'set_entity_state = scripts.set_entity_state:main'
+            'set_entity_state = scripts.set_entity_state:main',
+            'ranger_controller = ranger_controller:main',
+            'keyboard_teleop = scripts.keyboard_teleop:main'
         ],
     },
 )

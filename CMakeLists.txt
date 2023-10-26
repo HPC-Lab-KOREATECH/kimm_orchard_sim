@@ -11,6 +11,8 @@ install(DIRECTORY map config launch meshes models urdf worlds rviz scripts
 
 install(PROGRAMS
     scripts/set_entity_state.py
+    scripts/ranger_controller.py
+    scripts/keyboard_teleop.py
     DESTINATION lib/${PROJECT_NAME}
 )
 
