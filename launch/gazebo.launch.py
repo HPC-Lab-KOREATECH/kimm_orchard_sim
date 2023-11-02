@@ -38,7 +38,7 @@ def generate_launch_description():
 
     # Path to the Xacro file
     xacro_path = join(kimm_orchard_sim_path, 'urdf', 'ranger_mini.xacro')
-    #doc = get_xacro_to_doc(xacro_path, {"wheel_odom_topic": "odom", "sim_gazebo": "true", "two_d_lidar_enabled": "true", "camera_enabled": "true"})
+    doc = get_xacro_to_doc(xacro_path, {"wheel_odom_topic": "odom", "sim_gazebo": "true", "two_d_lidar_enabled": "true", "camera_enabled": "true"})
     map_xacro_path = join(kimm_orchard_sim_path, 'map', 'urdf', 'orchard_geometry.urdf')
 
     # Launch the robot_state_publisher node
@@ -48,15 +48,7 @@ def generate_launch_description():
         name='robot_state_publisher',
         output='screen',
         parameters=[{"use_sim_time": use_sim_time},
-                    {'robot_description': Command( \
-                    ['xacro ', xacro_path,
-                    ' camera_enabled:=', camera_enabled,
-                    ' stereo_camera_enabled:=', stereo_camera_enabled,
-                    ' two_d_lidar_enabled:=', two_d_lidar_enabled,
-                    ' sim_gazebo:=', "true",
-                    ' odometry_source:=', odometry_source,
-                    ' robot_namespace:=', robot_namespace,
-                    ])}],
+                    {'robot_description': doc.toxml()}],
         remappings=[
             ('/joint_states', PythonExpression(['"', robot_namespace, '/joint_states"'])),
         ]

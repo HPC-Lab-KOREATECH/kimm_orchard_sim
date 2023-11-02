@@ -59,8 +59,8 @@ class Commander(Node):
             self.vel[2] = sign*math.hypot(vel_msg.linear.x - vel_msg.angular.z*self.steering_track/2, vel_msg.angular.z*self.wheel_base/2) - vel_steerring_offset
             self.vel[3] = sign*math.hypot(vel_msg.linear.x + vel_msg.angular.z*self.steering_track/2, vel_msg.angular.z*self.wheel_base/2) + vel_steerring_offset
 
-            self.pos[0] = -math.atan(vel_msg.angular.z*self.wheel_base/(2*vel_msg.linear.x + vel_msg.angular.z*self.steering_track))
-            self.pos[1] = -math.atan(vel_msg.angular.z*self.wheel_base/(2*vel_msg.linear.x - vel_msg.angular.z*self.steering_track))
+            self.pos[0] = math.atan(vel_msg.angular.z*self.wheel_base/(2*vel_msg.linear.x + vel_msg.angular.z*self.steering_track))
+            self.pos[1] = math.atan(vel_msg.angular.z*self.wheel_base/(2*vel_msg.linear.x - vel_msg.angular.z*self.steering_track))
             self.pos[2] = -self.pos[0]
             self.pos[3] = -self.pos[1]
 
@@ -77,8 +77,8 @@ class Commander(Node):
             else:
                 ang = 0
             
-            self.pos[0] = -math.atan(ang)
-            self.pos[1] = -math.atan(ang)
+            self.pos[0] = math.atan(ang)
+            self.pos[1] = math.atan(ang)
             self.pos[2] = self.pos[0]
             self.pos[3] = self.pos[1]
             
@@ -104,10 +104,10 @@ class Commander(Node):
         # pivot turn
         elif(mode_selection == 3):
 
-            self.pos[0] = math.atan(self.steering_track/self.wheel_base)
-            self.pos[1] = -math.atan(self.steering_track/self.wheel_base)
-            self.pos[2] = -math.atan(self.steering_track/self.wheel_base)
-            self.pos[3] = math.atan(self.steering_track/self.wheel_base)
+            self.pos[0] = -math.atan(self.steering_track/self.wheel_base)
+            self.pos[1] = math.atan(self.steering_track/self.wheel_base)
+            self.pos[2] = math.atan(self.steering_track/self.wheel_base)
+            self.pos[3] = -math.atan(self.steering_track/self.wheel_base)
             
             self.vel[0] = -vel_msg.angular.z 
             self.vel[1] = vel_msg.angular.z 
