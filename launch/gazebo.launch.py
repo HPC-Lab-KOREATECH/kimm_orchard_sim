@@ -36,6 +36,12 @@ def generate_launch_description():
     world_file = LaunchConfiguration("world_file", default = join(kimm_orchard_sim_path, 'worlds', 'empty.sdf'))
     #world_file = LaunchConfiguration("world_file", default = join(bcr_bot_path, 'worlds', 'small_warehouse.sdf'))
 
+    # Path to the YAML file
+    yaml_file_path = join(kimm_orchard_sim_path, 'config', 'sensor_params.yaml')
+
+    with open(yaml_file_path, 'r') as file:
+        yaml_content = file.read()
+        
     # Path to the Xacro file
     xacro_path = join(kimm_orchard_sim_path, 'urdf', 'ranger_mini.xacro')
     doc = get_xacro_to_doc(xacro_path, {"wheel_odom_topic": "odom", "sim_gazebo": "true", "two_d_lidar_enabled": "true", "camera_enabled": "true"})
@@ -48,7 +54,8 @@ def generate_launch_description():
         name='robot_state_publisher',
         output='screen',
         parameters=[{"use_sim_time": use_sim_time},
-                    {'robot_description': doc.toxml()}],
+                    {'robot_description': doc.toxml()},
+                    {"yaml_content": yaml_content}],
         remappings=[
             ('/joint_states', PythonExpression(['"', robot_namespace, '/joint_states"'])),
         ]

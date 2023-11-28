@@ -1,7 +1,26 @@
 <?xml version="1.0"?>
-<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="VLP-16">
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="VLP-32">
   <xacro:property name="M_PI" value="3.1415926535897931" />
-  <xacro:macro name="VLP-16" params="*origin parent:=base_link name:=velodyne topic:=/velodyne_points hz:=10 lasers:=16 samples:=1875 collision_range:=0.3 min_range:=0.9 max_range:=130.0 noise:=0.008 min_angle:=-${M_PI} max_angle:=${M_PI} gpu:=false">
+  <xacro:macro name="VLP-32" params="*origin">
+
+  <xacro:property name="yaml_path" value="$(find kimm_orchard_sim)/config/sensor_params.yaml" />
+  <xacro:property name="dict_yaml" value="${xacro.load_yaml(yaml_path)}" />
+
+  <!-- lidar parameters -->
+  <xacro:property name="lidar" value="${dict_yaml['lidar']}" />
+  <xacro:property name="parent" value="${lidar['parent']}" />
+  <xacro:property name="name" value="${lidar['name']}" />
+  <xacro:property name="topic" value="${lidar['topic']}" />
+  <xacro:property name="hz" value="${lidar['hz']}" />
+  <xacro:property name="lasers" value="${lidar['lasers']}" />
+  <xacro:property name="samples" value="${lidar['samples']}" />
+  <xacro:property name="collision_range" value="${lidar['collision_range']}" />
+  <xacro:property name="min_range" value="${lidar['min_range']}" />
+  <xacro:property name="max_range" value="${lidar['max_range']}" />
+  <xacro:property name="noise" value="${lidar['noise']}" />
+  <xacro:property name="min_angle" value="${lidar['min_angle']}" />
+  <xacro:property name="max_angle" value="${lidar['max_angle']}" />
+  <xacro:property name="gpu" value="${lidar['gpu']}" />
 
     <joint name="${name}_base_mount_joint" type="fixed">
       <xacro:insert_block name="origin" /> 
@@ -10,29 +29,6 @@
     </joint>
 
     <link name="${name}_base_link">
-      <inertial>
-        <mass value="0.83"/>
-        <origin xyz="0 0 0.03585"/>
-        <inertia ixx="${(0.83 * (3.0*0.0516*0.0516 + 0.0717*0.0717)) / 12.0}" ixy="0" ixz="0"
-          iyy="${(0.83 * (3.0*0.0516*0.0516 + 0.0717*0.0717)) / 12.0}" iyz="0"
-          izz="${0.5 * 0.83 * (0.0516*0.0516)}"/>
-      </inertial>
-      <visual>
-        <geometry>
-          <mesh filename="$(find kimm_orchard_sim)/meshes/lidar/VLP16_base_1.dae" />
-        </geometry>
-      </visual>
-      <visual>
-        <geometry>
-          <mesh filename="$(find kimm_orchard_sim)/meshes/lidar/VLP16_base_2.dae" />
-        </geometry>
-      </visual>
-      <collision>
-        <origin rpy="0 0 0" xyz="0 0 0.03585"/>
-        <geometry>
-          <cylinder radius="0.0516" length="0.0717"/>
-        </geometry>
-      </collision>
     </link>
 
     <joint name="${name}_base_scan_joint" type="fixed" >
@@ -42,17 +38,6 @@
     </joint>
 
     <link name="${name}">
-      <inertial>
-        <mass value="0.01"/>
-        <origin xyz="0 0 0"/>
-        <inertia ixx="1e-7" ixy="0" ixz="0" iyy="1e-7" iyz="0" izz="1e-7"/>
-      </inertial>
-      <visual>
-        <origin xyz="0 0 -0.0377" />
-        <geometry>
-          <mesh filename="$(find kimm_orchard_sim)/meshes/lidar/VLP16_scan.dae" />
-        </geometry>
-      </visual>
     </link>
 
     <!-- Gazebo requires the velodyne_gazebo_plugins package -->
