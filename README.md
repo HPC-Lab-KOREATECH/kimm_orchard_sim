@@ -41,7 +41,7 @@ sudo apt-get install -y \
     freeglut3-dev \
     libglew-dev \
     libglfw3-dev && \
-    
+
 pip install transforms3d utm && \
 sudo apt-get autoremove -y && \
 sudo apt-get clean && \
@@ -62,10 +62,7 @@ cd ~/ros2_ws && colcon build --symlink-install
 
 ```
 cd ~/ros2_ws/src/docker
-./create_docker.sh
-# in docker
-cd /tmp
-./install.sh
+./run_command.sh
 ```
 
 # gazebo simulation 실행
