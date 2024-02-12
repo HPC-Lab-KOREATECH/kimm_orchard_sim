@@ -1,0 +1,21 @@
+{ 
+  "normal": {
+    "______lllllllllllllll______": {
+      "gear": 0,
+      "target_speed": 3.2,
+
+      "PD_gas_gain": [0.4, 0.1],
+      "PD_brake_gain": [0.06, 0.1],
+
+      "enable_brake_error": 0.1
+    },
+    
+    "______---------------______": {
+      "_":"------------------------------stanly-------------",
+      "stanly_gain": [1.2, 0.01, 0.0],
+      "anti_windup_val": 300.0,
+      "stanly_heading_gain": 1.6
+    }
+  }
+
+}

@@ -43,6 +43,15 @@ cd ~/ros2_ws/src/kimm_orchard_sim/map/urdf
 xacro orchard_geometry.urdf.xacro  > orchard_geometry.urdf
 cd ~/ros2_ws && colcon build --symlink-install
 ```
+# Docker setup
+
+```
+cd ~/ros2_ws/src/docker
+./create_docker.sh
+# in docker
+cd /tmp
+./install.sh
+```
 
 # gazebo simulation 실행
 ```
@@ -59,18 +68,20 @@ ros2 run joint_state_publisher_gui joint_state_publisher_gui
 ros2 run tf2_tools view_frames
 ```
 
-# 모터 제어 토픽 
-``` 
-ros2 topic pub /forward_position_controller/commands std_msgs/msg/Float64MultiArray "{data: [0.9, 0.9, 0.0, 0.0]}"
+# Ranger Control
 ```
+ros2 run kimm_orchard_sim keyboard_teleop.py
+```
+### Keyboard
 
-```
-ros2 topic pub /forward_velocity_controller/commands std_msgs/msg/Float64MultiArray "{data: [3.0, 3.0, 3.0, 3.0]}"
-```
+1. **In-Phase mode** 
 
-# 제자리 회전
-```
-ros2 topic pub /forward_position_controller/commands std_msgs/msg/Float64MultiArray "{data:[0.938, -0.938, -0.938, 0.938]}"
+**w/W**(straight), **s/S**(back), **QAZCDE**(Other Phase) of 8 direction
 
-ros2 topic pub /forward_velocity_controller/commands std_msgs/msg/Float64MultiArray "{data: [3.0, -3.0, 3.0, -3.0]}"
-```
+2. **Opposite phase**
+
+**q**(turn left && straight), **e**(turn right && straight), **z, c**
+
+3. **Pivot turn**
+
+**a or d** (Rotate in place)
