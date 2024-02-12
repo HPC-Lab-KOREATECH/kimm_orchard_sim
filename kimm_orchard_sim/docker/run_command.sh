@@ -14,5 +14,5 @@ docker run -it \
     --hostname hy-B660M-HD3P \
     --network host \
     --gpus all \
-    --name kimm_orchard1 \
+    --name kimm_orchard \
     kimm:v1.0 bash

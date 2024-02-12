@@ -90,10 +90,10 @@ RUN add-apt-repository ppa:borglab/gtsam-release-4.1 && \
         libglew-dev \
         libglfw3-dev && \
     pip install transforms3d utm && \
-    pip install -U colcon-common-extensions && \
     apt-get autoremove -y && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* && \
+    pip install -U colcon-common-extensions
 
 # Set ROS2 environment variables in /root/.bashrc
 RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc && \
