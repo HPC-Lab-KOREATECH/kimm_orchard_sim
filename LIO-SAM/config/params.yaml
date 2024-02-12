@@ -3,7 +3,7 @@
 
     # Topics
     pointCloudTopic: "gazebo_ros_laser_controller/out"                   # Point cloud data
-    imuTopic: "imu/data_relayed"                        # IMU data
+    imuTopic: "/imu_hpc/out"                        # IMU data
     odomTopic: "odometry/imu"                    # IMU pre-preintegration odometry, same frequency as IMU
     gpsTopic: "gps/odom"                    # GPS odometry topic from navsat, see module_navsat.launch file
 
@@ -21,7 +21,7 @@
 
     # Export settings
     savePCD: true                               # https://github.com/TixiaoShan/LIO-SAM/issues/3
-    savePCDDirectory: "/root"         # in your home folder, starts and ends with "/". Warning: the code deletes "LOAM" folder then recreates it. See "mapOptimization" for implementation
+    savePCDDirectory: "/root/"         # in your home folder, starts and ends with "/". Warning: the code deletes "LOAM" folder then recreates it. See "mapOptimization" for implementation
 
     # Sensor Settings
     sensor: velodyne                               # lidar sensor type, either 'velodyne', 'ouster' or 'livox'
