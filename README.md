@@ -1,8 +1,12 @@
 # kimm_orchard_sim
+
 kimm_orchard_sim (2023)
 
+---
+
 # Dependencies
-```
+
+```bash
 rosdep update
 
 cd ~/ros2_ws
@@ -49,51 +53,59 @@ sudo rm -rf /var/lib/apt/lists/* && \
 pip install -U colcon-common-extensions
 ```
 
+---
+
 # First setup
 
-```
+```bash
 cd ~/ros2_ws/src
 git clone <package>
 cd ~/ros2_ws/src/kimm_orchard_sim/map/urdf
 xacro orchard_geometry.urdf.xacro  > orchard_geometry.urdf
 cd ~/ros2_ws && colcon build --symlink-install
 ```
+
+---
+
 # Docker setup
 
-```
+```bash
 cd ~/ros2_ws/src/docker
 ./run_command.sh
 ```
 
+---
+
 # gazebo simulation 실행
-```
+
+```bash
 ros2 launch kimm_orchard_sim gazebo.launch.py
 ```
 
-# joint_state_publisher_gui 실행
-```
-ros2 run joint_state_publisher_gui joint_state_publisher_gui
-```
+---
 
 # tf pdf 생성
-```
+
+```bash
 ros2 run tf2_tools view_frames
 ```
 
+---
+
 # Ranger Control
+
+```bash
+# Local path publisher 현재 실행된 global path 중 선택해서 가능 /gym, /straight, /u_turn, /circle
+python3 /root/ros2_ws/src/kimm_orchard_sim/kimm_orchard_sim/scripts/path_debug/local_path_publisher.py /gym
+
+# 제어 노드 실행 (Local path follower)
+ros2 run control car_control
 ```
-ros2 run kimm_orchard_sim keyboard_teleop.py
+
+---
+
+# LIO-SAM
+
+```bash
+ros2 launch lio_sam run.launch.py
 ```
-### Keyboard
-
-1. **In-Phase mode** 
-
-**w/W**(straight), **s/S**(back), **QAZCDE**(Other Phase) of 8 direction
-
-2. **Opposite phase**
-
-**q**(turn left && straight), **e**(turn right && straight), **z, c**
-
-3. **Pivot turn**
-
-**a or d** (Rotate in place)
