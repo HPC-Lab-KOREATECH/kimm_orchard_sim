@@ -148,6 +148,12 @@ public:
     void lo_odom_cb(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
     {
         // info : [x, y], UTM coordinate
+
+    
+        // cout << "lo_odom.x !!!: " << msg->data[0] << endl;
+        // cout << "lo_odom.y !!!: " << msg->data[1] << endl;
+        // cout << "lo_odom size !!!: " << msg->data.size() << endl;
+        
         this->lo_odom.x = msg->data[0];
         this->lo_odom.y = msg->data[1];
 
@@ -176,6 +182,9 @@ public:
             {
                 cout << "경로 xxxxxxxxxx: " << msg->poses.size() << endl;
             }
+
+            // cerr << "Error: The local path sub yet!!!!." << endl;
+            // return 404; // Return 404 to indicate an error.
             return;
         }
 
@@ -199,7 +208,7 @@ public:
 
         this->pl_local_path_abs = points_abs;
         this->pl_local_path = points;
-        // cout << "pl_local_path_abs size !!!: " << pl_local_path_abs.size() << endl;
+        
         path_yaws_calc();
     }
 
@@ -277,6 +286,7 @@ public:
     {
         if (pl_local_path.empty())
         {
+            cout << "pl_local_path size !!!: " << pl_local_path.size() << endl;
             cerr << "Error: The local path sub yet!!!!." << endl;
             return 404; // Return 404 to indicate an error.
         }
@@ -318,7 +328,7 @@ public:
     double calc_path_curvature(float time_delay = 0.0, float diff_s = 1.5)
     {
         float td = clip(time_delay, 0.0F, 2.0F);
-        predict_dist = td * clip(this->speed, 1.0F, 9.0F); // (s)*(m/s)
+        predict_dist = td * clip(this->speed, 1.0F, 9.0F) - (diff_s / 2.0); // (s)*(m/s)
         double second_predict_dist = predict_dist + diff_s;
         int f_pri_yaw_index = 0;
         int s_pri_yaw_index = 0;
@@ -341,6 +351,69 @@ public:
                 f_pri_yaw_index = static_cast<int>(i);
                 min_dist = f_dist;
             }
+            if (s_dist < second_min_dist)
+            {
+                s_pri_yaw_index = static_cast<int>(i);
+                second_min_dist = s_dist;
+            }
+        }
+
+        // TODO: 여기 path_yaw의 인덱스와 local_path의 인덱스가 다를 경우 값이 일치하지 않을 수 있음.
+        double yaw_diff = abs(nomalize_angle(pl_local_path_yaws[f_pri_yaw_index] - pl_local_path_yaws[s_pri_yaw_index]));
+
+        double tmp_curv = yaw_diff / diff_s;
+        this->path_curvature = low_pass_filter(tmp_curv, pre_path_curvature, 1.0);
+        this->pre_path_curvature = this->path_curvature;
+
+        return path_curvature;
+    }
+
+    double calc_path_curvature_center(float diff_s = 1.5)
+    {
+        if (pl_local_path.empty())
+        {
+            cout << "pl_local_path size !!!: " << pl_local_path.size() << endl;
+            cerr << "Error: The local path sub yet!!!!." << endl;
+            return 404; // Return 404 to indicate an error.
+        }
+
+        predict_dist = - (diff_s / 2.0); // (s)*(m/s)
+        double second_predict_dist = predict_dist + diff_s;
+        int f_pri_yaw_index = 0;
+        int s_pri_yaw_index = 0;
+
+        double s_f = 0.0;   
+        double s_s = 0.0;         // 경로의 길이 (Frenet s)
+        double min_dist = 1e9; // 아주 큰 값으로 초기화
+        double second_min_dist = 1e9;
+
+
+
+        for (int i = this->closest_index; i >= 0; --i){
+
+            double dx = pl_local_path[i].x - pl_local_path[i - 1].x;
+            double dy = pl_local_path[i].y - pl_local_path[i - 1].y;
+
+            s_f += std::sqrt(dx * dx + dy * dy); // 경로의 길이 누적
+
+            double f_dist = abs(s_f - abs(predict_dist));
+
+            if (f_dist < min_dist)
+            {
+                f_pri_yaw_index = static_cast<int>(i);
+                min_dist = f_dist;
+            }
+        }
+
+
+        for (int i = this->closest_index + 1; i < pl_local_path.size(); i++)
+        {
+            double dx = pl_local_path[i].x - pl_local_path[i - 1].x;
+            double dy = pl_local_path[i].y - pl_local_path[i - 1].y;
+            s_s += std::sqrt(dx * dx + dy * dy); // 경로의 길이 누적
+
+            double s_dist = abs(s_s - second_predict_dist);
+
             if (s_dist < second_min_dist)
             {
                 s_pri_yaw_index = static_cast<int>(i);

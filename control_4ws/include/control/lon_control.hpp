@@ -15,7 +15,7 @@ private:
     float current_speed_;
     float target_speed_;
 
-    float gas_scale_;  // gas : 0 ~ 6.9444 m/s
+    float gas_scale_;  // gas : 0 ~ 1.666 m/s
     float brake_scale_;  // brake : 0.f ~ 10
 
     float pre_calc_speed = 0.0;
@@ -24,7 +24,7 @@ private:
 
 public:
     LonController()
-        : gas_scale_(6.9), brake_scale_(200) {
+        : gas_scale_(1.666), brake_scale_(200) {
             gas_pid = std::make_shared<PIDController>(-1.0, 1.0);
             brake_pid = std::make_shared<PIDController>(-1.0, 1.0);
         }
@@ -63,28 +63,29 @@ public:
         float error = target_speed_ - current_speed_;
         GasAndBrake return_val;
         double gas_val = gas_pid->compute(target_speed_, current_speed_, 0.1);
+        return_val.gas = target_speed_ + gas_val * gas_scale_;
+        // if (-this->enable_brake_error < error)
+        // {
+        //     return_val.gas = target_speed_ + gas_val * gas_scale_;
+        //     return_val.brake = 0;
+        // }
+        // else if (-2*this->enable_brake_error < error && error <= -this->enable_brake_error)
+        // {
+        //     return_val.gas = target_speed_;
+        //     return_val.brake = 0;
+        // }
+        // else
+        // {
+        //     double brake_val = brake_pid->compute(target_speed_, current_speed_, 0.05);
+        //     return_val.gas = 0 * gas_scale_;
+        //     return_val.brake = 30 -brake_val * brake_scale_;
+        // }
 
-        if (-this->enable_brake_error < error)
-        {
-            return_val.gas = target_speed_ + gas_val * gas_scale_;
-            return_val.brake = 0;
-        }
-        else if (-2*this->enable_brake_error < error && error <= -this->enable_brake_error)
-        {
-            return_val.gas = target_speed_;
-            return_val.brake = 0;
-        }
-        else
-        {
-            double brake_val = brake_pid->compute(target_speed_, current_speed_, 0.05);
-            return_val.gas = 0 * gas_scale_;
-            return_val.brake = 30 -brake_val * brake_scale_;
-        }
-
-        return_val.gas = clip(return_val.gas, 0.0, 6.9);
+        return_val.gas = clip(return_val.gas, -1.666, 1.666);
+        
         // return_val.gas = low_pass_filter(return_val.gas, this->pre_calc_speed, 0.6);
         // return_val.brake = clip(return_val.brake, 1.0, 199.0);
-        return_val.brake = clip(return_val.brake, 0.0, 199.0);
+        // return_val.brake = clip(return_val.brake, 0.0, 199.0);
 
         this->pre_calc_speed = return_val.gas;
 

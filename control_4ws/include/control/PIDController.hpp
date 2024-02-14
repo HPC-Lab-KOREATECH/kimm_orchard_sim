@@ -56,6 +56,20 @@ double nomalize_angle(double rad_angle)
     return rad_ang;
 }
 
+int sign_determinater(double df, double dr){
+    double diff_delta = df - dr;
+    int sign = 0;
+
+    if (diff_delta >= 0){
+        sign = 1;
+    }
+    else{
+        sign = -1;
+    }
+
+    return sign;
+}
+
 
 class PIDController
 {

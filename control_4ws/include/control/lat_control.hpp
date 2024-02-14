@@ -28,7 +28,7 @@ private:
     float ego_heading_;
     double curvature_;
     double heading_gain_;
-
+    double heading_term;
         
 public:
     Stanley()
@@ -52,6 +52,8 @@ public:
 
         anti_windup_max_ = 0.0;
         heading_gain_ = 1.0;
+
+        heading_term = 0.0;
     }
 
     void set_stanly_gain(double kp, double ki, double kd)
@@ -89,14 +91,14 @@ public:
         // Calculate the heading error
 
 
-        // double tmp_headin_error = nomalize_angle(target_heading_ - ego_heading_);
+        double tmp_headin_error = nomalize_angle(target_heading_ - ego_heading_);
 
-        double tmp_headin_error = (target_heading_ - ego_heading_);
+        // double tmp_headin_error = (target_heading_ - ego_heading_);
         double headingError = this->heading_gain_ * (tmp_headin_error);
 
         // Normalize the heading error to the range [-pi, pi]
         // headingError = nomalize_angle(headingError);
-
+        heading_term = headingError;
         // Calculate the proportional term
         double proportionalTerm = kp_ * crossTrackError_;
 
@@ -113,10 +115,10 @@ public:
         integral += crossTrackError_ * dt;
         integral = clip(integral, -anti_windup_max_, anti_windup_max_);
 
-        if (this->speed_ < 1)
-        {
-            integral = 0;
-        }
+        // if (this->speed_ < 1)
+        // {
+        //     integral = 0;
+        // }
 
         double integralTerm = ki_ * integral;
 
@@ -126,7 +128,7 @@ public:
         double headingErrorTermF = headingError * Lf/(Lf+Lr); //4ws
         double headingErrorTermR = -headingError * Lr/(Lf+Lr); //4ws
 
-        cout << headingError << endl;
+        // cout << headingError << endl;
         // cout << headingErrorTermR << endl;
         double steeringAngleF = headingErrorTermF + atan2(PID_steer, (0.1 + this->speed_)); //4ws
         double steeringAngleR = headingErrorTermR + atan2(PID_steer, (0.1 + this->speed_)); //4ws
@@ -136,6 +138,11 @@ public:
         steeringAngle.R = nomalize_angle(steeringAngleR);
 
         return steeringAngle;
+    }
+
+    double get_heading_term()
+    {
+        return heading_term;
     }
 
     double get_stanley_P_gain()
@@ -264,15 +271,11 @@ public:
         com_lpf_steer.R = com_lpf_steerR;
 
 
-        // com_lpf_steer.FL = tan(com_lpf_steerF) / (1 - (width/(2*L)) * (tan(com_lpf_steerF) - tan(com_lpf_steerR))); //4ws
-        // com_lpf_steer.FR = tan(com_lpf_steerF) / (1 + (width/(2*L)) * (tan(com_lpf_steerF) - tan(com_lpf_steerR))); //4ws
-        // com_lpf_steer.RL = tan(com_lpf_steerR) / (1 - (width/(2*L)) * (tan(com_lpf_steerF) - tan(com_lpf_steerR))); //4ws
-        // com_lpf_steer.RR = tan(com_lpf_steerR) / (1 + (width/(2*L)) * (tan(com_lpf_steerF) - tan(com_lpf_steerR))); //4ws
+        com_lpf_steer.FL = atan2(tan(com_lpf_steerF) , (1 - (width/(2*L)) * (tan(com_lpf_steerF) - tan(com_lpf_steerR)))); //4ws
+        com_lpf_steer.FR = atan2(tan(com_lpf_steerF) , (1 + (width/(2*L)) * (tan(com_lpf_steerF) - tan(com_lpf_steerR)))); //4ws
+        com_lpf_steer.RL = atan2(tan(com_lpf_steerR) , (1 - (width/(2*L)) * (tan(com_lpf_steerF) - tan(com_lpf_steerR)))); //4ws
+        com_lpf_steer.RR = atan2(tan(com_lpf_steerR) , (1 + (width/(2*L)) * (tan(com_lpf_steerF) - tan(com_lpf_steerR)))); //4ws
         
-        com_lpf_steer.FL = com_lpf_steerF;
-        com_lpf_steer.FR = com_lpf_steerF;
-        com_lpf_steer.RL = com_lpf_steerR;
-        com_lpf_steer.RR = com_lpf_steerR;
         
         com_lpf_steer.FL = nomalize_angle(com_lpf_steer.FL);
         com_lpf_steer.FR = nomalize_angle(com_lpf_steer.FR);
