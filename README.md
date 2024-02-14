@@ -2,8 +2,6 @@
 
 kimm_orchard_sim (2023)
 
----
-
 # Dependencies
 
 ```bash
@@ -53,8 +51,6 @@ sudo rm -rf /var/lib/apt/lists/* && \
 pip install -U colcon-common-extensions
 ```
 
----
-
 # First setup
 
 ```bash
@@ -65,8 +61,6 @@ xacro orchard_geometry.urdf.xacro  > orchard_geometry.urdf
 cd ~/ros2_ws && colcon build --symlink-install
 ```
 
----
-
 # Docker setup
 
 ```bash
@@ -74,23 +68,17 @@ cd ~/ros2_ws/src/docker
 ./run_command.sh
 ```
 
----
-
 # gazebo simulation 실행
 
 ```bash
 ros2 launch kimm_orchard_sim gazebo.launch.py
 ```
 
----
-
 # tf pdf 생성
 
 ```bash
 ros2 run tf2_tools view_frames
 ```
-
----
 
 # Ranger Control
 
@@ -101,8 +89,6 @@ python3 /root/ros2_ws/src/kimm_orchard_sim/kimm_orchard_sim/scripts/path_debug/l
 # 제어 노드 실행 (Local path follower)
 ros2 run control car_control
 ```
-
----
 
 # LIO-SAM
 
