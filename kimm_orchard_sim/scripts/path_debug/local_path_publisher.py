@@ -56,28 +56,30 @@ class PathProcessor(Node):
             new_path = Path()
             new_path.header.stamp = rclpy.time.Time().to_msg()
             new_path.header.frame_id = "map"  # 참조할 프레임 ID
-
-            new_path.poses = closest_points
-            self.publisher_viz.publish(new_path)
+            
+            if closest_points is not None:
+                new_path.poses = closest_points
+                self.publisher_viz.publish(new_path)
 
             # 새로운 Path 메시지 생성 및 오프셋 적용
             offset_path = Path()
             offset_path.header.stamp = rclpy.time.Time().to_msg()
             offset_path.header.frame_id = "map"  # 참조할 프레임 ID
 
-            for pose in closest_points:
-                # 각 포즈의 위치에 offset 적용
-                offset_pose = PoseStamped()
-                offset_pose.header = pose.header
-                offset_pose.pose.position.x = pose.pose.position.x + self.utm_x_zero
-                offset_pose.pose.position.y = pose.pose.position.y + self.utm_y_zero
-                offset_pose.pose.position.z = pose.pose.position.z
-                offset_pose.pose.orientation = pose.pose.orientation
+            if closest_points is not None:
+                for pose in closest_points:
+                    # 각 포즈의 위치에 offset 적용
+                    offset_pose = PoseStamped()
+                    offset_pose.header = pose.header
+                    offset_pose.pose.position.x = pose.pose.position.x + self.utm_x_zero
+                    offset_pose.pose.position.y = pose.pose.position.y + self.utm_y_zero
+                    offset_pose.pose.position.z = pose.pose.position.z
+                    offset_pose.pose.orientation = pose.pose.orientation
 
-                offset_path.poses.append(offset_pose)
+                    offset_path.poses.append(offset_pose)
 
-            # 오프셋이 적용된 Path 메시지를 다른 토픽에 퍼블리시
-            self.publisher.publish(offset_path)
+                # 오프셋이 적용된 Path 메시지를 다른 토픽에 퍼블리시
+                self.publisher.publish(offset_path)
 
     def pos_callback(self, msg):
         # 타임스탬프와 프레임 ID 설정
@@ -88,7 +90,7 @@ class PathProcessor(Node):
         # 위치 설정
         self.current_position.pose.position.x = msg.data[0] - self.utm_x_zero
         self.current_position.pose.position.y = msg.data[1] - self.utm_y_zero
-        self.current_position.pose.position.z = 0.0
+        self.current_position.pose.position.z = 0.0 
 
     def find_closest_points(self, path, current_position, num_points_forward, num_points_backward):
         # 현재 위치에서 각 점까지의 거리를 계산
@@ -97,18 +99,24 @@ class PathProcessor(Node):
             dist = self.euclidean_distance(current_position.pose, pose.pose)
             distances.append((dist, i))
 
+        #print(dist)
+        #print(distances)
         # 거리에 따라 정렬하여 가장 가까운 점 찾기
         distances.sort(key=lambda x: x[0])
-        closest_point_index = distances[0][1]
+        #print(distances([0][1]))
+        if len(distances) > 0:
+            closest_point_index = distances[0][1]
 
-        # 선택된 점들의 범위 계산
-        start_index = max(closest_point_index - num_points_backward, 0)
-        end_index = min(closest_point_index + num_points_forward, len(path.poses))
+            # 선택된 점들의 범위 계산  try:
+            start_index = max(closest_point_index - num_points_backward, 0)
+            end_index = min(closest_point_index + num_points_forward, len(path.poses))
 
-        # 선택된 범위의 점들을 반환
-        selected_points = path.poses[start_index:end_index]
+            # 선택된 범위의 점들을 반환
+            selected_points = path.poses[start_index:end_index]
 
-        return selected_points
+            return selected_points
+        
+        return None
 
     def euclidean_distance(self, pose1, pose2):
         # 두 포즈 사이의 유클리드 거리를 계산
