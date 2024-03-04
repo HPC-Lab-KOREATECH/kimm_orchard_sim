@@ -86,11 +86,11 @@ public:
 
 
 
-    PointFR calc_stanley_steer(double dt = 1)
+    linear_angular calc_stanley_steer(double dt = 1)
     {
         // Calculate the heading error
 
-
+        linear_angular l_n_a;
         double tmp_headin_error = nomalize_angle(target_heading_ - ego_heading_);
 
         // double tmp_headin_error = (target_heading_ - ego_heading_);
@@ -123,7 +123,7 @@ public:
         double integralTerm = ki_ * integral;
 
         // Calculate the steering angle using Stanley Method
-        double PID_steer = proportionalTerm + derivativeTerm + integralTerm;
+        float PID_steer = proportionalTerm + derivativeTerm + integralTerm;
 
         double headingErrorTermF = headingError * Lf/(Lf+Lr); //4ws
         double headingErrorTermR = -headingError * Lr/(Lf+Lr); //4ws
@@ -136,8 +136,13 @@ public:
 
         steeringAngle.F = nomalize_angle(steeringAngleF);
         steeringAngle.R = nomalize_angle(steeringAngleR);
+        
+        PID_steer = clip(PID_steer, -5.0F, 5.0F);
+        l_n_a.linear = PID_steer;
+        l_n_a.angular = heading_term;
+        
 
-        return steeringAngle;
+        return l_n_a;
     }
 
     double get_heading_term()
@@ -235,60 +240,60 @@ public:
     }
 
 
-    PointFR calc_combined_steer()
-    {
-        double FeedForwardSteeringF = calc_FF_SteerF();
-        double FeedForwardSteeringR = calc_FF_SteerR();
+    // PointFR calc_combined_steer()
+    // {
+    //     double FeedForwardSteeringF = calc_FF_SteerF();
+    //     double FeedForwardSteeringR = calc_FF_SteerR();
 
-        FF_steerF = clip(FeedForwardSteeringF, -deltaMax, deltaMax);
-        FF_steerR = clip(FeedForwardSteeringR, -deltaMax, deltaMax);
+    //     FF_steerF = clip(FeedForwardSteeringF, -deltaMax, deltaMax);
+    //     FF_steerR = clip(FeedForwardSteeringR, -deltaMax, deltaMax);
 
-        if (cb_data_->get_odom_sub_flag())
-        {
-            // stanley
-            this->stanley_steer = calc_stanley_steer();
-            this->stanley_steer.F = clip(this->stanley_steer.F, -deltaMax, deltaMax);
-            this->stanley_steer.R = clip(this->stanley_steer.R, -deltaMax, deltaMax);
-            cb_data_->set_down_odom_sub_flag();
-        }
+    //     if (cb_data_->get_odom_sub_flag())
+    //     {
+    //         // stanley
+    //         this->stanley_steer = calc_stanley_steer();
+    //         this->stanley_steer.F = clip(this->stanley_steer.F, -deltaMax, deltaMax);
+    //         this->stanley_steer.R = clip(this->stanley_steer.R, -deltaMax, deltaMax);
+    //         cb_data_->set_down_odom_sub_flag();
+    //     }
 
-        // Combine the steering angles
-        PointFR combinedSteering;
-        combinedSteering.F = FF_weight_ * FF_steerF + stanly_weight_ * stanley_steer.F;
-        combinedSteering.R = FF_weight_ * FF_steerR + stanly_weight_ * stanley_steer.R;
+    //     // Combine the steering angles
+    //     PointFR combinedSteering;
+    //     combinedSteering.F = FF_weight_ * FF_steerF + stanly_weight_ * stanley_steer.F;
+    //     combinedSteering.R = FF_weight_ * FF_steerR + stanly_weight_ * stanley_steer.R;
 
-        double combined_steerF = clip(combinedSteering.F, -deltaMax, deltaMax);
-        double combined_steerR = clip(combinedSteering.R, -deltaMax, deltaMax);
+    //     double combined_steerF = clip(combinedSteering.F, -deltaMax, deltaMax);
+    //     double combined_steerR = clip(combinedSteering.R, -deltaMax, deltaMax);
 
-        double com_lpf_steerF = low_pass_filter(combined_steerF, pre_com_steerF, com_steer_alpha);
-        double com_lpf_steerR = low_pass_filter(combined_steerR, pre_com_steerR, com_steer_alpha);
+    //     double com_lpf_steerF = low_pass_filter(combined_steerF, pre_com_steerF, com_steer_alpha);
+    //     double com_lpf_steerR = low_pass_filter(combined_steerR, pre_com_steerR, com_steer_alpha);
 
-        pre_com_steerF = com_lpf_steerF;
-        pre_com_steerR = com_lpf_steerR;
+    //     pre_com_steerF = com_lpf_steerF;
+    //     pre_com_steerR = com_lpf_steerR;
 
-        PointFR com_lpf_steer;
-        com_lpf_steer.F = com_lpf_steerF;
-        com_lpf_steer.R = com_lpf_steerR;
+    //     PointFR com_lpf_steer;
+    //     com_lpf_steer.F = com_lpf_steerF;
+    //     com_lpf_steer.R = com_lpf_steerR;
 
 
-        com_lpf_steer.FL = atan2(tan(com_lpf_steerF) , (1 - (width/(2*L)) * (tan(com_lpf_steerF) - tan(com_lpf_steerR)))); //4ws
-        com_lpf_steer.FR = atan2(tan(com_lpf_steerF) , (1 + (width/(2*L)) * (tan(com_lpf_steerF) - tan(com_lpf_steerR)))); //4ws
-        com_lpf_steer.RL = atan2(tan(com_lpf_steerR) , (1 - (width/(2*L)) * (tan(com_lpf_steerF) - tan(com_lpf_steerR)))); //4ws
-        com_lpf_steer.RR = atan2(tan(com_lpf_steerR) , (1 + (width/(2*L)) * (tan(com_lpf_steerF) - tan(com_lpf_steerR)))); //4ws
+    //     com_lpf_steer.FL = atan2(tan(com_lpf_steerF) , (1 - (width/(2*L)) * (tan(com_lpf_steerF) - tan(com_lpf_steerR)))); //4ws
+    //     com_lpf_steer.FR = atan2(tan(com_lpf_steerF) , (1 + (width/(2*L)) * (tan(com_lpf_steerF) - tan(com_lpf_steerR)))); //4ws
+    //     com_lpf_steer.RL = atan2(tan(com_lpf_steerR) , (1 - (width/(2*L)) * (tan(com_lpf_steerF) - tan(com_lpf_steerR)))); //4ws
+    //     com_lpf_steer.RR = atan2(tan(com_lpf_steerR) , (1 + (width/(2*L)) * (tan(com_lpf_steerF) - tan(com_lpf_steerR)))); //4ws
         
         
-        com_lpf_steer.FL = nomalize_angle(com_lpf_steer.FL);
-        com_lpf_steer.FR = nomalize_angle(com_lpf_steer.FR);
-        com_lpf_steer.RL = nomalize_angle(com_lpf_steer.RL);
-        com_lpf_steer.RR = nomalize_angle(com_lpf_steer.RR);
+    //     com_lpf_steer.FL = nomalize_angle(com_lpf_steer.FL);
+    //     com_lpf_steer.FR = nomalize_angle(com_lpf_steer.FR);
+    //     com_lpf_steer.RL = nomalize_angle(com_lpf_steer.RL);
+    //     com_lpf_steer.RR = nomalize_angle(com_lpf_steer.RR);
 
-        com_lpf_steer.FL = clip(com_lpf_steer.FL, -deltaMax, deltaMax);
-        com_lpf_steer.FR = clip(com_lpf_steer.FR, -deltaMax, deltaMax);
-        com_lpf_steer.RL = clip(com_lpf_steer.RL, -deltaMax, deltaMax);
-        com_lpf_steer.RR = clip(com_lpf_steer.RR, -deltaMax, deltaMax);
+    //     com_lpf_steer.FL = clip(com_lpf_steer.FL, -deltaMax, deltaMax);
+    //     com_lpf_steer.FR = clip(com_lpf_steer.FR, -deltaMax, deltaMax);
+    //     com_lpf_steer.RL = clip(com_lpf_steer.RL, -deltaMax, deltaMax);
+    //     com_lpf_steer.RR = clip(com_lpf_steer.RR, -deltaMax, deltaMax);
 
-        return com_lpf_steer;
-    }
+    //     return com_lpf_steer;
+    // }
 
 
     double get_FF_steerF()

@@ -14,6 +14,7 @@ ament_python_install_package(${PROJECT_NAME})
 install(PROGRAMS
     scripts/set_entity_state.py
     scripts/ranger_controller.py
+    scripts/ranger_controller_key.py
     scripts/keyboard_teleop.py
     scripts/utm_publisher.py
     scripts/pub_states.py

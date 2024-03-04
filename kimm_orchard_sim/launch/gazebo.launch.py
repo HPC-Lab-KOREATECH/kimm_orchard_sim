@@ -122,7 +122,7 @@ def generate_launch_description():
     
     controller_teleop = Node(
         package='kimm_orchard_sim',
-        executable='ranger_controller.py',
+        executable='ranger_controller_key.py',
         name='commander',
     )
 

@@ -4,6 +4,7 @@
 #include <std_msgs/msg/int16.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 #include <nav_msgs/msg/path.hpp>
+#include <geometry_msgs/msg/twist.hpp>
 #include <chrono>
 
 #include "control/callback_data_manage.hpp"
@@ -49,6 +50,7 @@ private:
 
     rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr ranger_data_pub;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr tmp_data_pub;
+    rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub;
 
     rclcpp::TimerBase::SharedPtr timer_;
     rclcpp::Time last_execution_time_ = now();
@@ -91,7 +93,7 @@ public:
 
         ranger_data_pub = this->create_publisher<std_msgs::msg::Float32MultiArray>("/Control/ranger_data", 1);
         tmp_data_pub = this->create_publisher<std_msgs::msg::Float64MultiArray>("/Control/tmp_plot_val", 1);
-        
+        cmd_vel_pub = this->create_publisher<geometry_msgs::msg::Twist>("/ranger_mini/cmd_vel", 1);
         // ------------------------------------------------------------</PUBLISHER>
         timer_ = this->create_wall_timer(std::chrono::milliseconds(10),
                                          std::bind(&CarControl::timer_callback, this));
@@ -120,6 +122,12 @@ public:
         float wheel_speed_RL = cb_data->get_wheel_speed_RL() * wheel_radius; // m/s 
         float wheel_speed_RR = cb_data->get_wheel_speed_RR() * wheel_radius; // m/s 
 
+        float wheel_steer_FL = cb_data->get_wheel_steer_FL();
+        float wheel_steer_FR = cb_data->get_wheel_steer_FR();
+        float wheel_steer_RL = cb_data->get_wheel_steer_RL();
+        float wheel_steer_RR = cb_data->get_wheel_steer_RR();
+
+        
 
         float yaw = cb_data->get_yaw();
         Point odom = cb_data->get_odom();
@@ -138,6 +146,18 @@ public:
             cout << "404!!!" << endl;
             // return;
         }
+
+        // 속도 추정
+        double vel_est_fl = wheel_speed_FL + cos(wheel_steer_FL) * yaw_rate * width / 2.0 \
+                        - sin(wheel_steer_FL) * yaw_rate * L / 2.0;
+        double vel_est_fr = wheel_speed_FR - cos(wheel_steer_FR) * yaw_rate * width / 2.0 \
+                        - sin(wheel_steer_FR) * yaw_rate * L / 2.0;
+        double vel_est_rl = wheel_speed_FL + cos(wheel_steer_FL) * yaw_rate * width / 2.0 \
+                        + sin(wheel_steer_FL) * yaw_rate * L / 2.0;
+        double vel_est_rr = wheel_speed_RR - cos(wheel_steer_RR) * yaw_rate * width / 2.0 \
+                        + sin(wheel_steer_RR) * yaw_rate * L / 2.0;
+
+
 
         // <계산> -----------------------------------------------------------
         param_manage->set_normal_param();
@@ -174,65 +194,73 @@ public:
         lat_control->set_stanly_data(curr_speed, pd_path_yaw, yaw, lat_error);
         lat_control->set_curvature(path_curature);
 
-        steerAngle = lat_control->calc_combined_steer();
+        linear_angular l_n_a = lat_control->calc_stanley_steer();
+        
+        double linear_x = (sqrt(pow(5,2) - pow(l_n_a.linear, 2)) * target_speed) / 5.0;
+        double linear_y = (l_n_a.linear * target_speed) / 5.0;
+        double angular_z = l_n_a.angular;
+        
+
+
 
         switch (cs)
         {
 
         case -1: // 정지 모드
-            acc_val_FL.gas = 0.0;
-            acc_val_FL.brake = 180;
+            // acc_val_FL.gas = 0.0;
+            // acc_val_FL.brake = 180;
 
-            acc_val_FR.gas = 0.0;
-            acc_val_FR.brake = 180;
+            // acc_val_FR.gas = 0.0;
+            // acc_val_FR.brake = 180;
 
-            acc_val_RL.gas = 0.0;
-            acc_val_RL.brake = 180;
+            // acc_val_RL.gas = 0.0;
+            // acc_val_RL.brake = 180;
 
-            acc_val_RR.gas = 0.0;
-            acc_val_RR.brake = 180;
+            // acc_val_RR.gas = 0.0;
+            // acc_val_RR.brake = 180;
             break;
 
         case 0: // normal 모드
             
-            int yr_sign = sign_determinater(steerAngle.F, steerAngle.R);
-            double yr_norm = sqrt(pow((cos(steerAngle.F) - cos(steerAngle.R)) / 2, 2) + pow((sin(steerAngle.F) - sin(steerAngle.R)) / 2, 2));
-            double target_yr = max_target_yr * yr_norm * yr_sign;
 
-            double target_speed_x = target_speed * (cos(steerAngle.F) + cos(steerAngle.R)) / 2.0;
-            double target_speed_y = target_speed * (sin(steerAngle.F) + sin(steerAngle.R)) / 2.0;
+            // 함수화 하자
+            // double yr_sign = sign_determinater(steerAngle.F, steerAngle.R);
+            // double yr_norm = sqrt(pow((cos(steerAngle.F) - cos(steerAngle.R)) / 2, 2) + pow((sin(steerAngle.F) - sin(steerAngle.R)) / 2, 2));
+            // double target_yr = max_target_yr * yr_norm * yr_sign;
+
+            // double target_speed_x = target_speed * (cos(steerAngle.F) + cos(steerAngle.R)) / 2.0;
+            // double target_speed_y = target_speed * (sin(steerAngle.F) + sin(steerAngle.R)) / 2.0;
 
 
-            target_speed_FL = target_speed_x * cos(steerAngle.FL) - target_yr * cos(steerAngle.FL) * width / 2 \
-                            + target_yr * sin(steerAngle.FL) * L / 2 + target_speed_y * sin(steerAngle.FL);
+            // target_speed_FL = target_speed_x * cos(steerAngle.FL) - target_yr * cos(steerAngle.FL) * width / 2 \
+            //                 + target_yr * sin(steerAngle.FL) * L / 2 + target_speed_y * sin(steerAngle.FL);
 
-            target_speed_FR = target_speed_x * cos(steerAngle.FR) + target_yr * cos(steerAngle.FR) * width / 2 \
-                            + target_yr * sin(steerAngle.FR) * L / 2 + target_speed_y * sin(steerAngle.FR);
+            // target_speed_FR = target_speed_x * cos(steerAngle.FR) + target_yr * cos(steerAngle.FR) * width / 2 \
+            //                 + target_yr * sin(steerAngle.FR) * L / 2 + target_speed_y * sin(steerAngle.FR);
 
-            target_speed_RL = target_speed_x * cos(steerAngle.RL) - target_yr * cos(steerAngle.RL) * width / 2 \
-                            - target_yr * sin(steerAngle.RL) * L / 2 + target_speed_y * sin(steerAngle.RL);
+            // target_speed_RL = target_speed_x * cos(steerAngle.RL) - target_yr * cos(steerAngle.RL) * width / 2 \
+            //                 - target_yr * sin(steerAngle.RL) * L / 2 + target_speed_y * sin(steerAngle.RL);
 
-            target_speed_RR = target_speed_x * cos(steerAngle.RR) + target_yr * cos(steerAngle.RR) * width / 2 \
-                            + target_yr * sin(steerAngle.RR) * L / 2 + target_speed_y * sin(steerAngle.RR);
+            // target_speed_RR = target_speed_x * cos(steerAngle.RR) + target_yr * cos(steerAngle.RR) * width / 2 \
+            //                 + target_yr * sin(steerAngle.RR) * L / 2 + target_speed_y * sin(steerAngle.RR);
 
             
-            lon_control->set_lon_target_speed(target_speed_FR);                                              
-            lon_control->set_lon_data(wheel_speed_FR);
-            acc_val_FR = lon_control->calc_gas_n_brake();
+            // lon_control->set_lon_target_speed(target_speed_FL);
+            // lon_control->set_lon_data(wheel_speed_FL);
+            // acc_val_FL = lon_control->calc_gas_n_brake();
 
+            // lon_control->set_lon_target_speed(target_speed_FR);                                              
+            // lon_control->set_lon_data(wheel_speed_FR);
+            // acc_val_FR = lon_control->calc_gas_n_brake();
 
-            lon_control->set_lon_target_speed(target_speed_FL);
-            lon_control->set_lon_data(wheel_speed_FL);
-            acc_val_FL = lon_control->calc_gas_n_brake();
+            // lon_control->set_lon_target_speed(target_speed_RL);
+            // lon_control->set_lon_data(wheel_speed_RL);
+            // acc_val_RL = lon_control->calc_gas_n_brake();
 
+            // lon_control->set_lon_target_speed(target_speed_RR);
+            // lon_control->set_lon_data(wheel_speed_RR);
+            // acc_val_RR = lon_control->calc_gas_n_brake();
 
-            lon_control->set_lon_target_speed(target_speed_RR);
-            lon_control->set_lon_data(wheel_speed_RR);
-            acc_val_RR = lon_control->calc_gas_n_brake();
-
-            lon_control->set_lon_target_speed(target_speed_RL);
-            lon_control->set_lon_data(wheel_speed_RL);
-            acc_val_RL = lon_control->calc_gas_n_brake();
    
             break;
         }
@@ -242,30 +270,55 @@ public:
 
         // 제어 값 pub
 
+        auto twist_msg = std::make_shared<geometry_msgs::msg::Twist>();
+
+        twist_msg->linear.x = linear_x; // 선속도 x 방향 설정
+        twist_msg->linear.y = linear_y; // 선속도 y 방향 설정
+        twist_msg->angular.z = angular_z; // 각속도 z 방향 설정
+
+        cmd_vel_pub->publish(*twist_msg);
+        
+
         auto car_data_msg = std::make_shared<std_msgs::msg::Float32MultiArray>();
 
-        car_data_msg->data.push_back(acc_val_FL.gas / wheel_radius);
-        car_data_msg->data.push_back(acc_val_FR.gas / wheel_radius);
-        car_data_msg->data.push_back(acc_val_RL.gas / wheel_radius);
-        car_data_msg->data.push_back(acc_val_RR.gas / wheel_radius);
+        // car_data_msg->data.push_back(acc_val_FL.gas / wheel_radius);
+        // car_data_msg->data.push_back(acc_val_FR.gas / wheel_radius);
+        // car_data_msg->data.push_back(acc_val_RL.gas / wheel_radius);
+        // car_data_msg->data.push_back(acc_val_RR.gas / wheel_radius);
+
+        // car_data_msg->data.push_back(steerAngle.FL);      
+        // car_data_msg->data.push_back(steerAngle.FR);   
+        // car_data_msg->data.push_back(steerAngle.RL);    
+        // car_data_msg->data.push_back(steerAngle.RR);   
 
 
-        car_data_msg->data.push_back(steerAngle.FL);      
-        car_data_msg->data.push_back(steerAngle.FR);   
-        car_data_msg->data.push_back(steerAngle.RL);    
-        car_data_msg->data.push_back(steerAngle.RR);   
+        car_data_msg->data.push_back(0);
+        car_data_msg->data.push_back(0);
+        car_data_msg->data.push_back(0);
+        car_data_msg->data.push_back(0);
+
+        // car_data_msg->data.push_back(0);
+        // car_data_msg->data.push_back(0.7);
+        // car_data_msg->data.push_back(0);
+        // car_data_msg->data.push_back(0);
+
+
 
 
         ranger_data_pub->publish(*car_data_msg);  
 
         // 디버그용 토픽
         auto tmp_plot_val_msg = std::make_shared<std_msgs::msg::Float64MultiArray>();
-
-        tmp_plot_val_msg->data.push_back(pd_path_yaw);  
-        tmp_plot_val_msg->data.push_back(lat_error); 
-        tmp_plot_val_msg->data.push_back(nomalize_angle(pd_path_yaw - yaw)); 
-        tmp_plot_val_msg->data.push_back(path_curature); 
-        tmp_plot_val_msg->data.push_back(lat_control->get_heading_term()); 
+ 
+        tmp_plot_val_msg->data.push_back(pd_path_yaw);                         //1
+        tmp_plot_val_msg->data.push_back(lat_error);                           //2
+        tmp_plot_val_msg->data.push_back(nomalize_angle(pd_path_yaw - yaw));   //3
+        tmp_plot_val_msg->data.push_back(path_curature);                       //4
+        tmp_plot_val_msg->data.push_back(lat_control->get_heading_term());     //5
+        // tmp_plot_val_msg->data.push_back(target_speed_FL);                     //6
+        // tmp_plot_val_msg->data.push_back(target_speed_FR);                     //7
+        // tmp_plot_val_msg->data.push_back(target_speed_RL);                     //8
+        // tmp_plot_val_msg->data.push_back(target_speed_RR);                     //9
 
         auto end_time = std::chrono::steady_clock::now();
         auto duration = end_time - start_time;

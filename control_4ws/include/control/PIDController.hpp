@@ -17,6 +17,11 @@ struct PointFR {
     double RR;
 };
 
+struct linear_angular {
+    double linear;
+    double angular;
+};
+
 struct GasAndBrake {
     double gas;
     double brake;
@@ -56,15 +61,15 @@ double nomalize_angle(double rad_angle)
     return rad_ang;
 }
 
-int sign_determinater(double df, double dr){
+double sign_determinater(double df, double dr){
     double diff_delta = df - dr;
-    int sign = 0;
+    double sign = 0.0;
 
     if (diff_delta >= 0){
-        sign = 1;
+        sign = 1.0;
     }
     else{
-        sign = -1;
+        sign = -1.0;
     }
 
     return sign;

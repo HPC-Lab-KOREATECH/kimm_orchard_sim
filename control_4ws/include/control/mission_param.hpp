@@ -16,7 +16,6 @@ using json = nlohmann::json;
 
 std::string file_name = "A";
 // std::string file_name = "B";
-// std::string file_name = "P";
 
 class ControlGainTuning
 {

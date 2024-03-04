@@ -105,7 +105,7 @@ def main(args=None):
 
 			twist = Twist()
 			twist.linear.x = x*speed; twist.linear.y = y*speed; twist.linear.z = z*speed
-			twist.angular.x = 0.0; twist.angular.y = 0.0; twist.angular.z = -th*turn
+			twist.angular.x = 0.0; twist.angular.y = 0.0; twist.angular.z = th*turn
 			pub.publish(twist)
 
 	except:

@@ -123,6 +123,7 @@ public:
             const auto& state2 = msg->states[1];
             const auto& state3 = msg->states[2];
             const auto& state4 = msg->states[3];
+            
             const auto& state5 = msg->states[4];
             const auto& state6 = msg->states[5];
             const auto& state7 = msg->states[6];
@@ -471,6 +472,26 @@ public:
     {
         return this->wheel_speed_RR;
     }   
+
+    float get_wheel_steer_FL()
+    {
+        return this->wheel_steer_FL;
+    }   
+
+    float get_wheel_steer_FR()
+    {
+        return this->wheel_steer_FR;
+    } 
+
+    float get_wheel_steer_RL()
+    {
+        return this->wheel_steer_RL;
+    } 
+
+    float get_wheel_steer_RR()
+    {
+        return this->wheel_steer_RR;
+    } 
 
 
     float get_speed()

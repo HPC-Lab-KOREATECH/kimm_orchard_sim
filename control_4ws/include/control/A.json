@@ -14,7 +14,7 @@
       "_":"------------------------------stanly-------------",
       "stanly_gain": [1.2, 0.05, 0.0],
       "anti_windup_val": 5.0,
-      "stanly_heading_gain": 1.6
+      "stanly_heading_gain": 2.0
     }
   }
 

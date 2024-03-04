@@ -28,6 +28,7 @@ setup(
             'utm_publisher = scripts.utm_publisher:main',
             'set_entity_state = scripts.set_entity_state:main',
             'ranger_controller = ranger_controller:main',
+            'ranger_controller_key = ranger_controller_key:main',
             'keyboard_teleop = scripts.keyboard_teleop:main',
             'path_publisher = scripts.path_debug.path_publisher:main',
             'base_link_state = scripts.base_link_state:main'

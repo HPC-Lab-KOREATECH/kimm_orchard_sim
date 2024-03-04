@@ -24,7 +24,7 @@ private:
 
 public:
     LonController()
-        : gas_scale_(1.666), brake_scale_(200) {
+        : gas_scale_(3.0), brake_scale_(200) {
             gas_pid = std::make_shared<PIDController>(-1.0, 1.0);
             brake_pid = std::make_shared<PIDController>(-1.0, 1.0);
         }
@@ -81,7 +81,7 @@ public:
         //     return_val.brake = 30 -brake_val * brake_scale_;
         // }
 
-        return_val.gas = clip(return_val.gas, -1.666, 1.666);
+        return_val.gas = clip(return_val.gas, -3.0, 3.0);
         
         // return_val.gas = low_pass_filter(return_val.gas, this->pre_calc_speed, 0.6);
         // return_val.brake = clip(return_val.brake, 1.0, 199.0);
