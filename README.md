@@ -32,6 +32,7 @@ sudo apt-get install -y \
     ros-humble-pcl-msgs \
     ros-humble-vision-opencv \
     ros-humble-xacro \
+    ros-humble-pcl-conversions \
     python3-pip \
     terminator \
     gedit \
