@@ -29,7 +29,6 @@ public:
 
 private:
   void publishPointCloud(const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
-    printf("1");
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::fromROSMsg(*msg, *cloud);
 
@@ -54,9 +53,9 @@ private:
     scan.header.stamp = rclcpp::Clock().now();  // 현재 시각
     scan.angle_min = -M_PI;
     scan.angle_max = M_PI;
-    scan.angle_increment = M_PI / 180.0;  // 1도 간격
-    scan.range_min = 0.0;
-    scan.range_max = 100.0;  // 최대 거리 설정
+    scan.angle_increment = M_PI / 180;  // 1도 간격 M_PI / 180.0
+    scan.range_min = 0.5;
+    scan.range_max = 200.0;  // 최대 거리 설정
 
     // 각도 범위에 따른 배열 크기 계산
     uint32_t ranges_size = static_cast<uint32_t>(std::round((scan.angle_max - scan.angle_min) / scan.angle_increment));
@@ -86,15 +85,10 @@ private:
   // rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr publisher_pcd_filterd;
   // rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr publisher_pcd_clipped;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr subscription_;
-  rclcpp::TimerBase::SharedPtr timer_;
 
   // 클리핑 값
-  float minZ = -0.4;
+  float minZ = -0.2;
   float maxZ = 0.4;
-
-  // 반경 기반 서치 방법
-  int minNeighborsInRadius = 10;
-  float radius = 0.05;
 };
 
 int main(int argc, char *argv[]) {

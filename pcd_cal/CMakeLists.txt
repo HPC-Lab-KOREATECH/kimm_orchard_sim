@@ -80,7 +80,7 @@ install(FILES
   DESTINATION lib/${PROJECT_NAME}
 )
 
-install(DIRECTORY include config launch src srv test
+install(DIRECTORY include config launch src srv test rviz
     DESTINATION share/${PROJECT_NAME}/
 )
 
