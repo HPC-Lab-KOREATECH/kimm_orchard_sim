@@ -1,11 +1,14 @@
 pcd_publisher:
   ros__parameters:
     pcd_path: "/root/map_file/real_world_map/resolution0.8/GlobalMap.pcd"
+    tree_pcd_path: "/root/map_file/tree_pcd/tree.pcd"
     
     #clipping point cloud by "z" value
     clipping_minz: -0.4
     clipping_maxz: 0.4
 
     #radius search parameter
-    minNeighborsInRadius: 100
-    radius: 0.3
+    minNeighborsInRadius: 80
+    clustering_radius: 0.15
+
+    center_search_radius: 0.7
