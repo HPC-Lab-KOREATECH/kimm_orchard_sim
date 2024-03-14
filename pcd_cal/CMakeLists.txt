@@ -37,6 +37,7 @@ find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(PCL 1.10 REQUIRED)
+find_package(nav_msgs REQUIRED)
 
 include_directories(${PCL_INCLUDE_DIRS} include)
 link_directories(${PCL_LIBRARY_DIRS})
@@ -48,6 +49,7 @@ ament_target_dependencies(
   rclcpp std_msgs
   sensor_msgs
   pcl_conversions
+  nav_msgs
 )
 target_link_libraries( map_to_pcl_parser
   ${Boost_SYSTEM_LIBRARY}
@@ -60,6 +62,7 @@ ament_target_dependencies(
   rclcpp std_msgs
   sensor_msgs
   pcl_conversions
+  nav_msgs
 )
 target_link_libraries( laser_scan
   ${Boost_SYSTEM_LIBRARY}

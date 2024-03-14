@@ -46,6 +46,12 @@ def generate_launch_description():
     xacro_path = join(kimm_orchard_sim_path, 'urdf', 'ranger_mini.xacro')
     doc = get_xacro_to_doc(xacro_path, {"sim_gazebo": "true"})
     map_xacro_path = join(kimm_orchard_sim_path, 'map', 'urdf', 'orchard_geometry.urdf')
+    
+    pcd_yaml_path = join(
+        get_package_share_directory('pcd_cal'),
+        'config',
+        'pcd_cal.yaml'
+    )
 
     # Launch the robot_state_publisher node
     robot_state_publisher = Node(
@@ -171,7 +177,14 @@ def generate_launch_description():
         output='screen'
     )
     
-
+    laser_scan = Node(
+        package='pcd_cal',
+        executable='laser_scan',
+        name='laser_scan',
+        output='screen',
+        parameters=[pcd_yaml_path]
+    )
+    
     return LaunchDescription([
         # Declare launch arguments
         DeclareLaunchArgument('world', default_value = world_file),
@@ -206,5 +219,6 @@ def generate_launch_description():
         joint_state_broadcaster,
         joint_state_publisher_gui,
         joint_state_publisher,
-        base_link_state_pub
+        base_link_state_pub,
+        laser_scan
     ])
