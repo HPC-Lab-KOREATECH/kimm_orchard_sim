@@ -39,9 +39,9 @@ public:
     clipping_maxz = this->get_parameter("clipping_maxz").as_double();
 
     publisher_scan = this->create_publisher<sensor_msgs::msg::LaserScan>("scan", 10);
-    publisher_scan1 = this->create_publisher<sensor_msgs::msg::PointCloud2>("point_debug1", 10);
-    publisher_scan2 = this->create_publisher<sensor_msgs::msg::PointCloud2>("point_debug2", 10);
-    publisher_scan3 = this->create_publisher<sensor_msgs::msg::PointCloud2>("point_debug3", 10);
+    // publisher_scan1 = this->create_publisher<sensor_msgs::msg::PointCloud2>("point_debug1", 10);
+    // publisher_scan2 = this->create_publisher<sensor_msgs::msg::PointCloud2>("point_debug2", 10);
+    // publisher_scan3 = this->create_publisher<sensor_msgs::msg::PointCloud2>("point_debug3", 10);
 
     lidar_subscription_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
       pcd_topic, rclcpp::SensorDataQoS(), std::bind(&PCDPublisher::publishPointCloud, this, std::placeholders::_1));
@@ -66,22 +66,22 @@ private:
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::fromROSMsg(*msg, *cloud);
 
-    sensor_msgs::msg::PointCloud2 output3;
-    pcl::toROSMsg(*cloud, output3);
-    output3.header.frame_id = "laser_data_frame";
-    output3.header.stamp = this->get_clock()->now();
-    publisher_scan3->publish(output3);
+    // sensor_msgs::msg::PointCloud2 output3;
+    // pcl::toROSMsg(*cloud, output3);
+    // output3.header.frame_id = "laser_data_frame";
+    // output3.header.stamp = this->get_clock()->now();
+    // publisher_scan3->publish(output3);
 
     Eigen::Matrix4f transform = get_tf_from_imu();
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud(new pcl::PointCloud<pcl::PointXYZ>());
     pcl::transformPointCloud(*cloud, *transformed_cloud, transform);
 
-    sensor_msgs::msg::PointCloud2 output1;
-    pcl::toROSMsg(*transformed_cloud, output1);
-    output1.header.frame_id = "laser_data_frame";
-    output1.header.stamp = this->get_clock()->now();
-    publisher_scan1->publish(output1);
+    // sensor_msgs::msg::PointCloud2 output1;
+    // pcl::toROSMsg(*transformed_cloud, output1);
+    // output1.header.frame_id = "laser_data_frame";
+    // output1.header.stamp = this->get_clock()->now();
+    // publisher_scan1->publish(output1);
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered(new pcl::PointCloud<pcl::PointXYZ>);
 
@@ -93,11 +93,11 @@ private:
     pass.setFilterLimits(clipping_minz + (1.0 - height_tilted) * 0.6, clipping_maxz + (1.0 - height_tilted) * 0.6);  // minZ와 maxZ는 필터링할 Z값의 범위입니다.
     pass.filter(*cloud_filtered);
 
-    sensor_msgs::msg::PointCloud2 output2;
-    pcl::toROSMsg(*cloud_filtered, output2);
-    output2.header.frame_id = "laser_data_frame";
-    output2.header.stamp = this->get_clock()->now();
-    publisher_scan2->publish(output2);
+    // sensor_msgs::msg::PointCloud2 output2;
+    // pcl::toROSMsg(*cloud_filtered, output2);
+    // output2.header.frame_id = "laser_data_frame";
+    // output2.header.stamp = this->get_clock()->now();
+    // publisher_scan2->publish(output2);
 
     sensor_msgs::msg::LaserScan laser_scan = convertPointCloudToLaserScan(cloud_filtered);
 
@@ -183,9 +183,9 @@ private:
   }
 
   rclcpp::Publisher<sensor_msgs::msg::LaserScan>::SharedPtr publisher_scan;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr publisher_scan1;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr publisher_scan2;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr publisher_scan3;
+  // rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr publisher_scan1;
+  // rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr publisher_scan2;
+  // rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr publisher_scan3;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr lidar_subscription_;
   // rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr imu_subscriber_;
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_subscriber_;
