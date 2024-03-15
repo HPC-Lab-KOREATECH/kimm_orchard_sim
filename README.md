@@ -2,6 +2,10 @@
 
 kimm_orchard_sim (2023)
 
+![Screenshot from 2024-03-15 17-01-03](https://github.com/HPC-Lab-KOREATECH/kimm_orchard_sim/assets/157468651/b6549de4-58db-42f6-9e48-996b5e12e011)
+![Screenshot from 2024-03-15 17-01-20](https://github.com/HPC-Lab-KOREATECH/kimm_orchard_sim/assets/157468651/76202934-4f10-474b-aa93-5a92c31663f3)
+
+
 # Dependencies
 
 ```bash
