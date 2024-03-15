@@ -85,10 +85,12 @@ private:
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered(new pcl::PointCloud<pcl::PointXYZ>);
 
+    float height_tilted = std::cos(roll)*std::cos(pitch);
+
     pcl::PassThrough<pcl::PointXYZ> pass;
     pass.setInputCloud(transformed_cloud);
     pass.setFilterFieldName("z");
-    pass.setFilterLimits(clipping_minz, clipping_maxz);  // minZ와 maxZ는 필터링할 Z값의 범위입니다.
+    pass.setFilterLimits(clipping_minz + (1.0 - height_tilted) * 0.6, clipping_maxz + (1.0 - height_tilted) * 0.6);  // minZ와 maxZ는 필터링할 Z값의 범위입니다.
     pass.filter(*cloud_filtered);
 
     sensor_msgs::msg::PointCloud2 output2;
@@ -156,28 +158,28 @@ private:
     // roll (x-axis rotation)
     float sinr_cosp = 2 * (imu_data.orientation.w * imu_data.orientation.x + imu_data.orientation.y * imu_data.orientation.z);
     float cosr_cosp = 1 - 2 * (imu_data.orientation.x * imu_data.orientation.x + imu_data.orientation.y * imu_data.orientation.y);
-    float roll = -std::atan2(sinr_cosp, cosr_cosp);
+    roll = std::atan2(sinr_cosp, cosr_cosp);
 
     // pitch (y-axis rotation)
     float sinp = std::sqrt(1 + 2 * (imu_data.orientation.w * imu_data.orientation.y - imu_data.orientation.x * imu_data.orientation.z));
     float cosp = std::sqrt(1 - 2 * (imu_data.orientation.w * imu_data.orientation.y - imu_data.orientation.x * imu_data.orientation.z));
-    float pitch = 2 * std::atan2(sinp, cosp) - M_PI / 2;
+    pitch = 2 * std::atan2(sinp, cosp) - M_PI / 2;
 
     // yaw (z-axis rotation)
-    float siny_cosp = 2 * (imu_data.orientation.w * imu_data.orientation.z + imu_data.orientation.x * imu_data.orientation.y);
-    float cosy_cosp = 1 - 2 * (imu_data.orientation.y * imu_data.orientation.y + imu_data.orientation.z * imu_data.orientation.z);
-    float yaw = std::atan2(siny_cosp, cosy_cosp);
+    // float siny_cosp = 2 * (imu_data.orientation.w * imu_data.orientation.z + imu_data.orientation.x * imu_data.orientation.y);
+    // float cosy_cosp = 1 - 2 * (imu_data.orientation.y * imu_data.orientation.y + imu_data.orientation.z * imu_data.orientation.z);
+    // yaw = std::atan2(siny_cosp, cosy_cosp);
 
     RCLCPP_INFO(this->get_logger(), "roll: %f, pitch: %f, yaw: %f", roll, pitch, yaw);
 
     Eigen::Matrix3f modified_rotation_matrix;
     modified_rotation_matrix = Eigen::AngleAxisf(pitch, Eigen::Vector3f::UnitY())
-                          * Eigen::AngleAxisf(roll, Eigen::Vector3f::UnitZ());
+                          * Eigen::AngleAxisf(roll, Eigen::Vector3f::UnitX());
 
     // 변환을 위한 4x4 변환 행렬 생성, 여기서 yaw 회전은 무시됩니다.
     Eigen::Matrix4f transform = Eigen::Matrix4f::Identity();
     transform.block<3,3>(0,0) = modified_rotation_matrix;
-    return transform;
+    return transform ;
   }
 
   rclcpp::Publisher<sensor_msgs::msg::LaserScan>::SharedPtr publisher_scan;
@@ -198,6 +200,8 @@ private:
   std::string pcd_topic;
   std::string scan_topic;
   std::string imu_topic;
+
+  float roll, pitch, yaw;
 };
 
 int main(int argc, char *argv[]) {
