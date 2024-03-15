@@ -170,7 +170,7 @@ private:
     // float cosy_cosp = 1 - 2 * (imu_data.orientation.y * imu_data.orientation.y + imu_data.orientation.z * imu_data.orientation.z);
     // yaw = std::atan2(siny_cosp, cosy_cosp);
 
-    RCLCPP_INFO(this->get_logger(), "roll: %f, pitch: %f, yaw: %f", roll, pitch, yaw);
+    // RCLCPP_INFO(this->get_logger(), "roll: %f, pitch: %f, yaw: %f", roll, pitch, yaw);
 
     Eigen::Matrix3f modified_rotation_matrix;
     modified_rotation_matrix = Eigen::AngleAxisf(pitch, Eigen::Vector3f::UnitY())

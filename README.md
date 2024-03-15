@@ -74,6 +74,10 @@ cd ~/ros2_ws/src/docker
 ```bash
 ros2 launch kimm_orchard_sim gazebo.launch.py
 ```
+if you launch simulation with rviz
+```bash
+ros2 launch kimm_orchard_sim gazebo.launch.py rviz:=true
+```
 
 # tf pdf 생성
 

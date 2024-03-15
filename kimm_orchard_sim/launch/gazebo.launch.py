@@ -21,7 +21,14 @@ def generate_launch_description():
     # Get bcr_bot package's share directory path
     # bcr_bot_path = get_package_share_directory('bcr_bot')
     kimm_orchard_sim_path = get_package_share_directory('kimm_orchard_sim')
-    
+    rviz_enabled = LaunchConfiguration('rviz', default='false')
+
+    # DeclareLaunchArgument에 rviz 추가
+    declare_rviz_enabled_argument = DeclareLaunchArgument(
+        'rviz',
+        default_value='false',
+        description='Set to "true" to enable rviz'
+    )
 
     # Retrieve launch configuration arguments
     use_sim_time = LaunchConfiguration('use_sim_time', default=True)
@@ -74,7 +81,7 @@ def generate_launch_description():
         arguments=[
             '-topic', "/robot_description",
             '-entity', PythonExpression(['"', robot_namespace, '_robot"']), #default enitity name _bcr_bot
-            '-z', "0.3",
+            '-z', "0.5",
             '-x', position_x,
             '-y', position_y,
             '-Y', orientation_yaw
@@ -123,7 +130,9 @@ def generate_launch_description():
 		package='rviz2',
 		executable='rviz2',
 		name='rviz2',
-		arguments=['-d', join(kimm_orchard_sim_path, 'rviz', 'entire_setup.rviz')]
+		arguments=['-d', join(kimm_orchard_sim_path, 'rviz', 'entire_setup.rviz')],
+        condition=IfCondition(rviz_enabled)
+
 	)
     
     controller_teleop = Node(
@@ -202,7 +211,7 @@ def generate_launch_description():
         # DeclareLaunchArgument('robot_description', default_value=doc.toxml()),
 
         # DeclareLaunchArgument('controller_configuration', default_value=controller_param_path),
-        
+        declare_rviz_enabled_argument,
         gazebo,
         robot_state_publisher,
         spawn_map,
