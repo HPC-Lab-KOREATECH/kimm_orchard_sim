@@ -21,3 +21,4 @@ laser_scan:
     pcd_topic: "/gazebo_ros_laser_controller/out"
     scan_topic: "/scan"
     imu_topic: "/imu_hpc/out" # "/odometry/imu"
+    

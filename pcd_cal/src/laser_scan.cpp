@@ -20,6 +20,8 @@
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include <deque>
+#include <rclcpp/clock.hpp>
+#include "rosgraph_msgs/msg/clock.hpp"  // /clock 메시지 타입을 위해 추가
 
 // auto qos = rclcpp::QoS(rclcpp::QoSInitialization::from_rmw(rmw_qos_reliability_policy_e));
 
@@ -31,14 +33,17 @@ public:
     this->declare_parameter<std::string>("imu_topic", "/imu_hpc/out");
     this->declare_parameter<float>("clipping_minz", -0.2);
     this->declare_parameter<float>("clipping_maxz", 0.4);
-
     pcd_topic = this->get_parameter("pcd_topic").as_string();
     scan_topic = this->get_parameter("scan_topic").as_string();
     imu_topic = this->get_parameter("imu_topic").as_string();
     clipping_minz = this->get_parameter("clipping_minz").as_double();
     clipping_maxz = this->get_parameter("clipping_maxz").as_double();
 
-    publisher_scan = this->create_publisher<sensor_msgs::msg::LaserScan>("scan", 10);
+    auto qos_profile = rclcpp::QoS(rclcpp::KeepLast(10));
+    qos_profile.reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE); // 신뢰할 수 있는 전송으로 설정
+    qos_profile.durability(RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL); // 노드 재시작 시 마지막 메시지 유지이
+
+    publisher_scan = this->create_publisher<sensor_msgs::msg::LaserScan>("scan", qos_profile);
     // publisher_scan1 = this->create_publisher<sensor_msgs::msg::PointCloud2>("point_debug1", 10);
     // publisher_scan2 = this->create_publisher<sensor_msgs::msg::PointCloud2>("point_debug2", 10);
     // publisher_scan3 = this->create_publisher<sensor_msgs::msg::PointCloud2>("point_debug3", 10);
@@ -49,11 +54,20 @@ public:
     // imu_subscriber_ = this->create_subscription<nav_msgs::msg::Odometry>(
     //   imu_topic, rclcpp::SensorDataQoS(), std::bind(&PCDPublisher::imuCallback, this, std::placeholders::_1));
 
+
     imu_subscriber_ = this->create_subscription<sensor_msgs::msg::Imu>(
       imu_topic, rclcpp::SensorDataQoS(), std::bind(&PCDPublisher::imuCallback, this, std::placeholders::_1));
+    clock_subscription_ = this->create_subscription<rosgraph_msgs::msg::Clock>(
+  "/clock", rclcpp::QoS(rclcpp::KeepLast(10)).best_effort(), std::bind(&PCDPublisher::clock_callback, this, std::placeholders::_1));
+
   }
 
 private:
+  void clock_callback(const rosgraph_msgs::msg::Clock::SharedPtr msg) {
+    std::lock_guard<std::mutex> lock(clock_mutex_);
+    last_clock_ = msg->clock;
+  }
+
   void imuCallback(const sensor_msgs::msg::Imu::SharedPtr msg) {
     std::lock_guard<std::mutex> lock(mutex_);
     imu_data_queue_.push_back(*msg);
@@ -109,7 +123,12 @@ private:
 
     // LaserScan 메시지의 기본 설정
     scan.header.frame_id = "laser_data_frame";  // 프레임 ID 설정
-    scan.header.stamp = rclcpp::Clock().now();  // 현재 시각
+    std::lock_guard<std::mutex> lock(clock_mutex_);
+      if (last_clock_.nanosec > 0 || last_clock_.sec > 0) {  // 유효한 시간이 있는지 확인
+        scan.header.stamp = last_clock_;
+      } else {
+        scan.header.stamp = this->get_clock()->now();  // /clock 데이터가 없는 경우 현재 시간 사용
+      }
     scan.angle_min = -M_PI;
     scan.angle_max = M_PI;
     scan.angle_increment = M_PI / 180;  // 1도 간격 M_PI / 180.0
@@ -202,6 +221,9 @@ private:
   std::string imu_topic;
 
   float roll, pitch, yaw;
+  rclcpp::Subscription<rosgraph_msgs::msg::Clock>::SharedPtr clock_subscription_;
+  std::mutex clock_mutex_;
+  builtin_interfaces::msg::Time last_clock_;
 };
 
 int main(int argc, char *argv[]) {
