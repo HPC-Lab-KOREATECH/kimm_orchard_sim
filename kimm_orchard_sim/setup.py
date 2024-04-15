@@ -31,6 +31,7 @@ setup(
             'ranger_controller_key = ranger_controller_key:main',
             'keyboard_teleop = scripts.keyboard_teleop:main',
             'path_publisher = scripts.path_debug.path_publisher:main',
+            'local_path_publisher = scripts.path_debug.local_path_publisher:main',
             'base_link_state = scripts.base_link_state:main'
         ],
     },

@@ -35,9 +35,9 @@ class Commander(Node):
         
 
     def cmd_callback(self, msg):
-        vel_msg.linear.x = msg.linear.x * self.max_speed
-        vel_msg.linear.y = msg.linear.y * self.max_speed
-        vel_msg.angular.z = -msg.angular.z * self.max_speed
+        vel_msg.linear.x = msg.linear.x
+        vel_msg.linear.y = msg.linear.y
+        vel_msg.angular.z = -msg.angular.z
         
     def timer_callback(self):
         if(vel_msg.linear.x == 0.0 and vel_msg.linear.y == 0.0 and vel_msg.angular.z == 0.0):
@@ -148,4 +148,3 @@ def main(args=None):
     
 if __name__ == '__main__':
     main()
-

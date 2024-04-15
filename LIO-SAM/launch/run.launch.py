@@ -10,6 +10,7 @@ def generate_launch_description():
 
     share_dir = get_package_share_directory('lio_sam')
     parameter_file = LaunchConfiguration('params_file')
+    parameter_file_for_robot_localzation = LaunchConfiguration('params_file_for_robot_localzation')
     xacro_path = os.path.join(share_dir, 'config', 'robot.urdf.xacro')
     rviz_config_file = os.path.join(share_dir, 'config', 'rviz2.rviz')
 
@@ -19,10 +20,17 @@ def generate_launch_description():
             share_dir, 'config', 'params.yaml'),
         description='FPath to the ROS2 parameters file to use.')
 
+    params_declare2 = DeclareLaunchArgument(
+        'params_file_for_robot_localzation',
+        default_value=os.path.join(
+            share_dir, 'config', 'robot_localization_params.yaml'),
+        description='FPath to the ROS2 parameters file to use.')
+
     print("urdf_file_name : {}".format(xacro_path))
 
     return LaunchDescription([
         params_declare,
+        params_declare2,
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
@@ -31,9 +39,23 @@ def generate_launch_description():
             output='screen'
             ),
         # Node(
+        #     package='tf2_ros',
+        #     executable='static_transform_publisher',
+        #     arguments='0.0 0.0 0.0 0.0 0.0 0 base_link gps'.split(' '),
+        #     parameters=[parameter_file],
+        #     output='screen'
+        #     ),
+        # Node(
+        #     package='lio_sam',
+        #     executable='lio_sam_simpleGpsOdom',
+        #     name='lio_sam_simpleGpsOdom',
+        #     parameters=[parameter_file],
+        #     output='screen'
+        # ),
+        # Node(
         #     package='robot_state_publisher',
         #     executable='robot_state_publisher',
-        #     name='robot_state_publisher',
+        #     name='robot_state_publisher_tf_static',
         #     output='screen',
         #     parameters=[{
         #         'robot_description': Command(['xacro', ' ', xacro_path])
@@ -68,10 +90,39 @@ def generate_launch_description():
             output='screen'
         ),
         Node(
+            package='lio_sam',
+            executable='lio_sam_gps_converter',
+            name='lio_sam_gps_converter',
+            parameters=[parameter_file],
+            output='screen'
+        ),
+        Node(
             package='rviz2',
             executable='rviz2',
             name='rviz2',
             arguments=['-d', rviz_config_file],
             output='screen'
+        ),
+        Node(
+            package='robot_localization',
+            executable='ekf_node',
+            name='ekf_gps',
+            parameters=[parameter_file_for_robot_localzation],
+            respawn=True,
+            remappings=[
+                ('odometry/filtered', 'odometry/navsat'),
+            ],
+        ),
+        Node(
+            package='robot_localization',
+            executable='navsat_transform_node',
+            name='navsat',
+            parameters=[parameter_file_for_robot_localzation],
+            respawn=True,
+            remappings=[
+                ('imu', 'imu_hpc/out'),
+                ('gps/fix', 'gps/fix'),
+                ('odometry/filtered', 'odometry/navsat'),
+            ],
         )
     ])

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Path
@@ -129,14 +131,14 @@ class PathProcessor(Node):
 def main(args=None):
     # argparse를 사용하여 명령줄 인자 처리
     parser = argparse.ArgumentParser(description='Path Processor Node')
-    parser.add_argument('topic_name', type=str, help='Name of the path topic to subscribe')
-    args = parser.parse_args()
+    # parser.add_argument('topic_name', type=str, help='Name of the path topic to subscribe')
+    # args = parser.parse_args()
 
     # rclpy.init에 전달하기 위한 인자 리스트 생성
-    rclpy_args = [args.topic_name]
+    # rclpy_args = [args.topic_name]
 
-    rclpy.init(args=rclpy_args)
-    path_processor = PathProcessor(args.topic_name)
+    rclpy.init()
+    path_processor = PathProcessor("/plan")
     rclpy.spin(path_processor)
     path_processor.destroy_node()
     rclpy.shutdown()

@@ -3,6 +3,10 @@
 
 #include <vector>
 #include <iostream>
+#include <random>
+#include <numeric>
+#include <limits>
+#include <cmath>
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -12,12 +16,15 @@
 
 #include <std_msgs/msg/int16.hpp>
 #include <std_msgs/msg/float64.hpp>
+#include <std_msgs/msg/bool.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
 #include <std_msgs/msg/float32_multi_array.hpp>
 
 #include <geometry_msgs/msg/point_stamped.hpp>
+#include <geometry_msgs/msg/twist.hpp>
 
 #include "control/PIDController.hpp"
+#include "control/kalman_filter.hpp"
 
 #include "ranger_msgs/msg/actuator_state_array.hpp"
 #include "ranger_msgs/msg/actuator_state.hpp"
@@ -27,11 +34,32 @@ using namespace std;
 class CallbackClass
 {
 private:
+    KalmanFilter2D *km_filter_;
+    
     Point lo_odom;
+    Point lo_odom_old;
+
+    Point vel_rel;
+    Point vel_abs;
+    Point vel_rel_km;
+    Point vel_rel_math;
+
     bool odom_sub_flag;
+    bool odom_sub_flag_fix;
+    bool odom_filter_flag;
     double lo_yaw;
     double lo_yaw_rate;
+    bool control_sw;
     // ERP Data
+    double vx_gt;
+    double vy_gt;
+
+    double vx_est_ki;
+    double vy_est_ki;
+
+    double vx_est_ki_pro;
+    double vy_est_ki_pro;
+
     float speed;
 
     float wheel_speed_FL;
@@ -50,6 +78,8 @@ private:
     float wheel_steer_RR;
 
     bool serial_sub_flag;
+
+    int rate_control;
     vector<Point> pl_local_path;     // relative coordinate
     vector<Point> pl_local_path_abs; // abs coordinate
     vector<double> pl_local_path_yaws;
@@ -60,9 +90,16 @@ private:
     int closest_index;
     double path_curvature = 0.0;
     double pre_path_curvature = 0.0;
-    Point zero_point;
+    
 
+    double wheel_radius = 0.105;
+    double L = 0.494;
+    double width = 0.364;
     double car_width = 0.364;
+
+    vector<Point> stanley_predict_pos;
+    vector<float> stanley_predict_yaw;
+    Point zero_point;
 
     Point AxisTrans_abs2rel(const Point &p)
     {
@@ -73,14 +110,43 @@ private:
     }
 
 public:
-    CallbackClass()
+    CallbackClass(KalmanFilter2D *km_filter)
     {
         // TODO: 생성자 작성 필요
+        this->km_filter_ = km_filter;
+
         lo_odom.x = 0.0;
         lo_odom.y = 0.0;
-        odom_sub_flag = false;
         
+        lo_odom_old.x = 0.0;
+        lo_odom_old.y = 0.0;
+        vel_rel.x = 0.0;
+        vel_rel.y = 0.0;
+
+        vel_abs.x = 0.0;
+        vel_abs.y = 0.0;
+
+        vel_rel_km.x = 0.0;
+        vel_rel_km.y = 0.0;
+
+        vel_rel_math.x = 0.0;
+        vel_rel_math.y = 0.0;
+
+        vx_gt = 0.0;
+        vy_gt = 0.0;
+
+        vx_est_ki = 0.0;
+        vy_est_ki = 0.0;
+
+        vx_est_ki_pro = 0.0;
+        vy_est_ki_pro = 0.0;
+
+        odom_sub_flag = false;
+        odom_sub_flag_fix = false;
+        odom_filter_flag = false;
+        control_sw =  false;
         speed = 0.0;
+        rate_control = 0;
 
         wheel_speed_FL = 0.0;
         wheel_speed_FR = 0.0;
@@ -108,11 +174,49 @@ public:
 
     Point AxisTrans_rel2abs(const Point &p)
     {
+        Point abs;
+        abs.x = p.x * cos(lo_yaw) - p.y * sin(lo_yaw) + lo_odom.x;
+        abs.y = p.x * sin(lo_yaw) + p.y * cos(lo_yaw) + lo_odom.y;
+        return abs;
+    }
+
+    Point AxisTrans_rel2abs_vel(const Point &p)
+    {
+        Point abs;
+        abs.x = p.x * cos(lo_yaw) - p.y * sin(lo_yaw);
+        abs.y = p.x * sin(lo_yaw) + p.y * cos(lo_yaw);
+        return abs;
+    }
+
+    Point AxisTrans_abs2rel_vel(const Point &p)
+    {
         Point rel;
-        rel.x = p.x * cos(lo_yaw) - p.y * sin(lo_yaw) + lo_odom.x;
-        rel.y = p.x * sin(lo_yaw) + p.y * cos(lo_yaw) + lo_odom.y;
+        rel.x = p.x * cos(lo_yaw) + p.y * sin(lo_yaw);
+        rel.y = -p.x * sin(lo_yaw) + p.y * cos(lo_yaw);
         return rel;
     }
+
+    double calculateVariance(const std::vector<double>& group) {
+        double sum = 0.0;
+        double mean = 0.0;
+        double variance = 0.0;
+
+        // 평균 계산
+        for (double num : group) {
+            sum += num;
+        }
+        mean = sum / group.size();
+
+        // 분산 계산
+        for (double num : group) {
+            variance += pow(num - mean, 2);
+        }
+        variance /= group.size();
+
+        return variance;
+    }
+
+    
 
     void ranger_data_cb(const ranger_msgs::msg::ActuatorStateArray::SharedPtr msg)
     {
@@ -134,13 +238,55 @@ public:
             this->wheel_steer_RL = state3.motor.driver_state; 
             this->wheel_steer_RR = state4.motor.driver_state; 
 
-            this->wheel_speed_FL = state5.motor.driver_state; 
-            this->wheel_speed_FR = state6.motor.driver_state; 
-            this->wheel_speed_RL = state7.motor.driver_state; 
-            this->wheel_speed_RR = state8.motor.driver_state;  
+            this->wheel_speed_FL = state5.motor.driver_state * this->wheel_radius; 
+            this->wheel_speed_FR = state6.motor.driver_state * this->wheel_radius; 
+            this->wheel_speed_RL = state7.motor.driver_state * this->wheel_radius; 
+            this->wheel_speed_RR = state8.motor.driver_state * this->wheel_radius;  
 
             this->serial_sub_flag = true;
 
+
+            
+
+            // 속도 추정
+            this->rate_control = this->rate_control + 1;
+            if(this->rate_control == 15){ //
+                
+                velocity_estimation();
+
+                if(!this->odom_filter_flag){
+                    km_filter_->predictUpdate1(this->vel_abs.x, this->vel_abs.y);
+                }
+                else{
+                    km_filter_->predictUpdate2(this->lo_odom.x, this->lo_odom.y, this->vel_abs.x, this->vel_abs.y);
+                    // km_filter_->predictUpdate1(this->vel_abs.x, this->vel_abs.y);
+
+                    double abs_x_speed = (this->lo_odom.x - this->lo_odom_old.x) / 0.125;
+                    double abs_y_speed = (this->lo_odom.y - this->lo_odom_old.y) / 0.125;
+                    this->lo_odom_old.x = this->lo_odom.x;
+                    this->lo_odom_old.y = this->lo_odom.y;
+
+                    Point math_abs_vel_tmp;
+                    math_abs_vel_tmp.x = abs_x_speed;
+                    math_abs_vel_tmp.y = abs_y_speed;
+
+                    this->vel_rel_math = AxisTrans_abs2rel_vel(math_abs_vel_tmp);
+                }
+
+                
+                Point km_abs_vel_tmp;
+                km_abs_vel_tmp.x = km_filter_->get_kf_vx();
+                km_abs_vel_tmp.y = km_filter_->get_kf_vy();
+
+                
+
+                vel_rel_km = AxisTrans_abs2rel_vel(km_abs_vel_tmp);
+                
+
+                this->odom_filter_flag = false;
+                this->rate_control = 0;
+            }
+            
         }
  
     }
@@ -158,8 +304,15 @@ public:
         this->lo_odom.x = msg->data[0];
         this->lo_odom.y = msg->data[1];
 
-        this->odom_sub_flag = true;
+        if (!odom_sub_flag_fix){
+            km_filter_->set_x_space(this->lo_odom.x, this->lo_odom.y);
+        }
+
+        this->odom_sub_flag_fix = true;
+        this->odom_filter_flag = true;
+        this-> odom_sub_flag = true;
     }
+    
 
     void lo_yaw_cb(const std_msgs::msg::Float64::SharedPtr msg)
     {
@@ -173,6 +326,11 @@ public:
         this->lo_yaw_rate = msg->angular_velocity.z;
     }
 
+    void pl_control_sw_cb(const std_msgs::msg::Bool::SharedPtr msg)
+    {
+        // Extract yaw rate (z-axis angular velocity)
+        this->control_sw = msg->data;
+    }
  
     
     void pl_local_path_cb(const nav_msgs::msg::Path::SharedPtr msg)
@@ -273,6 +431,12 @@ public:
         this->pl_control_switch = msg->data;
     }
 
+    void ranger_vel_cb(const geometry_msgs::msg::Twist::SharedPtr msg)
+    {
+        this->vx_gt = msg->linear.x;
+        this->vy_gt = msg->linear.y;
+    }
+
     
 
     double calc_n_get_lat_error()
@@ -294,7 +458,7 @@ public:
         else if (lo_odom.x == 0.0 || lo_odom.y == 0.0)
         {
             cerr << "Error: The odom UTM sub yet!!!!." << endl;
-            return 404; // Return 404 to indicate an error.
+            return 404; // Return 404 to indicate an error. 
         }
 
         closest_index = 0; // 계산 결과로 나오는 값인데 이 값도 사용된다.
@@ -432,10 +596,117 @@ public:
         return path_curvature;
     }
 
+    void velocity_estimation()
+    {
 
+        std::random_device rd;
+        std::mt19937 gen(rd()); // 메르센 트위스터 엔진 사용
+        std::normal_distribution<double> dist(0.0, 0.5); // 평균 0, 표준 편차 1
+
+
+        // double vel_est_fl = (wheel_speed_FL)  + cos(wheel_steer_FL) * this->lo_yaw_rate * this->width / 2.0 \
+        //                 - sin(wheel_steer_FL) * this->lo_yaw_rate * this->L / 2.0;
+        // double vel_est_fr = (wheel_speed_FR) - cos(wheel_steer_FR) * this->lo_yaw_rate * this->width / 2.0 \
+        //                 - sin(wheel_steer_FR) * this->lo_yaw_rate * this->L / 2.0;
+        // double vel_est_rl = (wheel_speed_RL) + cos(wheel_steer_RL) * this->lo_yaw_rate * this->width / 2.0 \
+        //                 + sin(wheel_steer_RL) * this->lo_yaw_rate * this->L / 2.0;
+        // double vel_est_rr = (wheel_speed_RR) - cos(wheel_steer_RR) * this->lo_yaw_rate * this->width / 2.0 \
+        //                 + sin(wheel_steer_RR) * this->lo_yaw_rate * this->L / 2.0;
+
+        double vel_est_fl = (wheel_speed_FL + abs(dist(gen))/3.0)  + cos(wheel_steer_FL) * this->lo_yaw_rate * this->width / 2.0 \
+                        - sin(wheel_steer_FL) * this->lo_yaw_rate * this->L / 2.0;
+        double vel_est_fr = (wheel_speed_FR + abs(dist(gen))/3.0) - cos(wheel_steer_FR) * this->lo_yaw_rate * this->width / 2.0 \
+                        - sin(wheel_steer_FR) * this->lo_yaw_rate * this->L / 2.0;
+        double vel_est_rl = (wheel_speed_RL + abs(dist(gen))/3.0) + cos(wheel_steer_RL) * this->lo_yaw_rate * this->width / 2.0 \
+                        + sin(wheel_steer_RL) * this->lo_yaw_rate * this->L / 2.0;
+        double vel_est_rr = (wheel_speed_RR + abs(dist(gen))/3.0) - cos(wheel_steer_RR) * this->lo_yaw_rate * this->width / 2.0 \
+                        + sin(wheel_steer_RR) * this->lo_yaw_rate * this->L / 2.0;
+
+
+        std::vector<double> vx_values = {cos(wheel_steer_FL) * vel_est_fl, cos(wheel_steer_FR) * vel_est_fr, cos(wheel_steer_RL) * vel_est_rl, cos(wheel_steer_RR) * vel_est_rr};
+        std::vector<double> vy_values = {sin(wheel_steer_FL) * vel_est_fl, sin(wheel_steer_FR) * vel_est_fr, sin(wheel_steer_RL) * vel_est_rl, sin(wheel_steer_RR) * vel_est_rr};
+        
+        double minVariance = std::numeric_limits<double>::max(); 
+        std::vector<double> minVarianceGroup; 
+        std::vector<int> minVarianceGroupInd; 
+
+        for (size_t i = 0; i < vx_values.size(); ++i) {
+            for (size_t j = i + 1; j < vx_values.size(); ++j) {
+                for (size_t k = j + 1; k < vx_values.size(); ++k) {
+                    std::vector<double> group = {vx_values[i], vx_values[j], vx_values[k]};
+                    double variance = calculateVariance(group);
+                    
+                    // 현재 분산이 최소 분산보다 작으면 갱신
+                    if (variance < minVariance) {
+                        minVariance = variance;
+                        minVarianceGroup = group;
+                        minVarianceGroupInd = {i, j, k};
+                    }
+                }
+            }
+        }
+
+        double vx_sum = 0.0;
+        
+        double vy_sum = 0.0;
+
+        for (double tmp_value : minVarianceGroup) {
+            vx_sum += tmp_value;
+        }
+
+        for (int ind : minVarianceGroupInd) {
+            vy_sum += vy_values[minVarianceGroupInd[ind]];
+        }
+
+
+        this->vx_est_ki_pro = vx_sum / minVarianceGroup.size();
+        this->vy_est_ki_pro = vy_sum / minVarianceGroup.size();
+
+
+        this->vx_est_ki = (cos(wheel_steer_FL) * vel_est_fl + cos(wheel_steer_FR) * vel_est_fr + cos(wheel_steer_RL) * vel_est_rl + cos(wheel_steer_RR) * vel_est_rr) / 4.0;
+        this->vy_est_ki = (sin(wheel_steer_FL) * vel_est_fl + sin(wheel_steer_FR) * vel_est_fr + sin(wheel_steer_RL) * vel_est_rl + sin(wheel_steer_RR) * vel_est_rr) / 4.0;
+
+        this->vel_rel.x = this->vx_est_ki;
+        this->vel_rel.y = this->vy_est_ki;
+
+        vel_abs = AxisTrans_rel2abs_vel(this->vel_rel);
+    }
     Point get_odom()
     {
         return this->lo_odom;
+    }
+
+    void calc_predict_odometry_for_stanley(float dt, int n)
+    {
+        vector<Point> predict_pos;
+
+        double dx = this->vx_est_ki * dt;
+        double dy = this->vy_est_ki * dt;
+
+        for (int i = 1; i <= n; i++)
+        {
+            Point tmp_odom;
+
+            tmp_odom.x = dx * i;
+            tmp_odom.y = dy * i;
+            predict_pos.push_back(tmp_odom);
+        }
+
+        vector<float> predict_yaw;
+
+        for (int i = 1; i <= n; i++)
+        {
+            float tmp_yaw = this->lo_yaw + this->lo_yaw_rate * (dt);
+            predict_yaw.push_back(tmp_yaw);
+        }
+
+        this->stanley_predict_pos = predict_pos;
+        this->stanley_predict_yaw = predict_yaw;
+    }
+
+    bool get_control_sw()
+    {
+        return this->control_sw;
     }
 
     bool get_odom_sub_flag()
@@ -499,6 +770,57 @@ public:
         return this->speed;
     }   
 
+    double get_vx_gt()
+    {
+        return this->vx_gt;
+    }   
+
+    double get_vy_gt()
+    {
+        return this->vy_gt;
+    }   
+
+    double get_vx_est_ki()
+    {
+        return this->vx_est_ki;
+    }
+    double get_vy_est_ki()
+    {
+        return this->vy_est_ki;
+    }
+
+    double get_vx_km()
+    {
+        return this->vel_rel_km.x;
+    }
+
+    double get_vy_km()
+    {
+        return this->vel_rel_km.y;
+    }
+
+    double get_vx_math()
+    {
+        return this->vel_rel_math.x;
+    }
+
+    double get_vy_math()
+    {
+        return this->vel_rel_math.y;
+    }
+
+    double get_vx_est_ki_pro()
+    {
+        return this->vx_est_ki_pro;
+    }
+
+    double get_vy_est_ki_pro()
+    {
+        return this->vy_est_ki_pro;
+    }
+
+
+
     // float get_steer()
     // {
     //     return this->steer;
@@ -552,6 +874,16 @@ public:
     vector<Point> get_relative_path()
     {
         return this->pl_local_path;
+    }
+
+    vector<Point> get_stanley_predict_pos()
+    {
+        return this->stanley_predict_pos;
+    }
+
+    vector<float> get_stanley_predict_yaw()
+    {
+        return this->stanley_predict_yaw;
     }
 
 };

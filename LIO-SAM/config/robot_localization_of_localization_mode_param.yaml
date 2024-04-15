@@ -1,0 +1,70 @@
+
+# Navsat (convert GPS coordinates to Cartesian)
+navsat:
+  ros__parameters:  
+    frequency: 50.0
+    wait_for_datum: true
+    delay: 0.0
+    use_odometry_yaw : false
+    magnetic_declination_radians: 0.0 #0.104719733 #2.356194
+    yaw_offset: 0.0 #-0.472363067 #-0.498543 #0.7 #-2.356194 #0.6283184 #1.843184 #1.572 #0.6283184 #-1.117010489
+    zero_altitude: false
+    broadcast_utm_transform: true
+    broadcast_utm_transform_as_parent_frame: false
+    publish_filtered_gps: false
+    use_local_cartesian: false
+    
+
+# EKF for Navsat
+ekf_gps:
+  ros__parameters:
+    publish_tf: false
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_link
+    world_frame: odom
+
+    frequency: 50.0
+    two_d_mode: false
+    sensor_timeout: 0.01
+    # -------------------------------------
+    # External IMU:
+    # -------------------------------------
+    imu0: /imu_hpc/out # to be enu coordinate ************************************ 
+    # make sure the input is aligned with ROS REP105. "imu_correct" is manually transformed by myself. EKF can also transform the data using tf between your imu and base_link
+    imu0_config: [false, false, false,
+                  true,  true,  true,
+                  false, false, false,
+                  false, false, true,
+                  true,  true,  true]
+    imu0_differential: false
+    imu0_queue_size: 50
+    imu0_remove_gravitational_acceleration: true
+    # -------------------------------------
+    # Odometry (From Navsat):
+    # -------------------------------------
+    odom0: odometry/gps
+    odom0_config: [true,  true,  true,
+                  false, false, false,
+                  false, false, false,
+                  false, false, false,
+                  false, false, false]
+    odom0_differential: false
+    odom0_queue_size: 10
+
+    #                            x     y     z     r     p     y   x_dot  y_dot  z_dot  r_dot p_dot y_dot x_ddot y_ddot z_ddot
+    process_noise_covariance: [ 1.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,     0.0,     0.0,     0.0,    0.0,    0.0,    0.0,    0.0,      0.0,
+                                0.0,    1.0,    0.0,    0.0,    0.0,    0.0,    0.0,     0.0,     0.0,     0.0,    0.0,    0.0,    0.0,    0.0,      0.0,
+                                0.0,    0.0,    10.0,   0.0,    0.0,    0.0,    0.0,     0.0,     0.0,     0.0,    0.0,    0.0,    0.0,    0.0,      0.0,
+                                0.0,    0.0,    0.0,    0.03,   0.0,    0.0,    0.0,     0.0,     0.0,     0.0,    0.0,    0.0,    0.0,    0.0,      0.0,
+                                0.0,    0.0,    0.0,    0.0,    0.03,   0.0,    0.0,     0.0,     0.0,     0.0,    0.0,    0.0,    0.0,    0.0,      0.0,
+                                0.0,    0.0,    0.0,    0.0,    0.0,    0.1,    0.0,     0.0,     0.0,     0.0,    0.0,    0.0,    0.0,    0.0,      0.0,
+                                0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.25,    0.0,     0.0,     0.0,    0.0,    0.0,    0.0,    0.0,      0.0,
+                                0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,     0.25,    0.0,     0.0,    0.0,    0.0,    0.0,    0.0,      0.0,
+                                0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,     0.0,     0.04,    0.0,    0.0,    0.0,    0.0,    0.0,      0.0,
+                                0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,     0.0,     0.0,     0.01,   0.0,    0.0,    0.0,    0.0,      0.0,
+                                0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,     0.0,     0.0,     0.0,    0.01,   0.0,    0.0,    0.0,      0.0,
+                                0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,     0.0,     0.0,     0.0,    0.0,    0.5,    0.0,    0.0,      0.0,
+                                0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,     0.0,     0.0,     0.0,    0.0,    0.0,    0.01,   0.0,      0.0,
+                                0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,     0.0,     0.0,     0.0,    0.0,    0.0,    0.0,    0.01,     0.0,
+                                0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,     0.0,     0.0,     0.0,    0.0,    0.0,    0.0,    0.0,      0.015]

@@ -20,6 +20,8 @@ install(PROGRAMS
     scripts/pub_states.py
     scripts/path_debug/path_publisher.py
     scripts/base_link_state.py
+    scripts/mappub.py
+    scripts/path_debug/local_path_publisher.py
     DESTINATION lib/${PROJECT_NAME}
 )
 

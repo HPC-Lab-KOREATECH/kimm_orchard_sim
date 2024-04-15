@@ -1,12 +1,21 @@
 /**:
   ros__parameters:
+    # Converter : GPS-SLAM coordinates
+    gpsToOdomSubTopic : "gpsToOdomSubTopic"
+    gpsToOdomPubTopic : "gpsToOdomPubTopic"
+
+    odomToGpsSubTopic : "odomToGpsSubTopic"
+    odomToGpsPubTopic : "odomToGpsPubTopic"
+
+    # don't modify
+    isLocalizationMode : false
 
     # Topics
     pointCloudTopic: "gazebo_ros_laser_controller/out"                   # Point cloud data
-    imuTopic: "/imu_hpc/out"                        # IMU data
+    imuTopic: "imu_hpc/out"                          # IMU data
     odomTopic: "odometry/imu"                    # IMU pre-preintegration odometry, same frequency as IMU
-    gpsTopic: "gps/odom"                    # GPS odometry topic from navsat, see module_navsat.launch file
-
+    gpsTopic: "odometry/gps"                     # GPS odometry topic from navsat, see module_navsat.launch file
+    
     # Frames
     lidarFrame: "ouster"
     baselinkFrame: "base_link"
@@ -14,10 +23,10 @@
     mapFrame: "map"
 
     # GPS Settings
-    useImuHeadingInitialization: false           # if using GPS data, set to "true"
+    useImuHeadingInitialization: true            # if using GPS data, set to "true"
     useGpsElevation: false                       # if GPS elevation is bad, set to "false"
     gpsCovThreshold: 2.0                         # m^2, threshold for using GPS data
-    poseCovThreshold: 25.0                       # m^2, threshold for using GPS data
+    poseCovThreshold: 3.0                       # m^2, threshold for using GPS data
 
     # Export settings
     savePCD: false                               # https://github.com/TixiaoShan/LIO-SAM/issues/3
@@ -26,11 +35,11 @@
     # Sensor Settings
     sensor: velodyne                               # lidar sensor type, either 'velodyne', 'ouster' or 'livox'
     N_SCAN: 32                                   # number of lidar channels (i.e., Velodyne/Ouster: 16, 32, 64, 128, Livox Horizon: 6)
-    Horizon_SCAN: 512                            # lidar horizontal resolution (Velodyne:1800, Ouster:512,1024,2048, Livox Horizon: 4000)
-    downsampleRate: 1                         # default: 1. Downsample your data if too many
+    Horizon_SCAN: 512                           # lidar horizontal resolution (Velodyne:1800, Ouster:512,1024,2048, Livox Horizon: 4000)
+    downsampleRate: 1                            # default: 1. Downsample your data if too many
     # points. i.e., 16 = 64 / 4, 16 = 16 / 1
-    lidarMinRange: 0.9                          # default: 1.0, minimum lidar range to be used
-    lidarMaxRange: 130.0                      # default: 1000.0, maximum lidar range to be used
+    lidarMinRange: 0.9                           # default: 1.0, minimum lidar range to be used
+    lidarMaxRange: 130.0                        # default: 1000.0, maximum lidar range to be used
 
     # IMU Settings
     imuAccNoise: 1.0e-03
@@ -38,16 +47,58 @@
     imuAccBiasN: 1.0e-03
     imuGyrBiasN: 1.0e-03
 
+    # imuAccNoise: 1.0e-06
+    # imuGyrNoise: 1.0e-06
+    # imuAccBiasN: 1.0e-06
+    # imuGyrBiasN: 1.0e-06
+
+    # imuGravity: 0.00001
+    # imuRPYWeight: 0.1
+
+    # extrinsicTrans:  [ 0.0,  0.0,  0.0 ]
+    # extrinsicRot:    [ 1.0,  0.0,  0.0,
+    #                    0.0,  1.0,  0.0,
+    #                    0.0,  0.0,  1.0 ]
+    # extrinsicRPY: [ 1.0,  0.0,  0.0,
+    #                 0.0,  1.0,  0.0,
+    #                 0.0,  0.0,  1.0 ]
+
+    # imuAccNoise: 1.0e-06
+    # imuGyrNoise: 1.0e-06
+    # imuAccBiasN: 1.0e-06
+    # imuGyrBiasN: 1.0e-06
+
     imuGravity: 9.80511
     imuRPYWeight: 0.1
 
     extrinsicTrans:  [ 0.0,  0.0,  0.0 ]
-    extrinsicRot:    [1.0,  0.0,  0.0,
+    # extrinsicRot:    [ 1.0, 0.0,  0.0,     # NED
+    #                    0.0,  -1.0,  0.0,
+    #                    0.0,  0.0,  -1.0 ]
+
+    # extrinsicRot:    [ 0.0,  -1.0,  0.0,  # ENU
+    #                    1.0,  0.0,  0.0,
+    #                    0.0,  0.0,  1.0 ]
+
+    extrinsicRot:    [ 1.0,  0.0,  0.0,  
                        0.0,  1.0,  0.0,
-                       0.0,  0.0, 1.0 ]
-    extrinsicRPY: [1.0,  0.0,  0.0,
-                       0.0,  1.0,  0.0,
-                       0.0,  0.0, 1.0 ]
+                       0.0,  0.0,  1.0 ]
+
+    extrinsicRPY:    [1.0,  0.0,  0.0,
+                      0.0,  1.0,  0.0,
+                      0.0,  0.0,  1.0 ]
+
+    # extrinsicRPY:    [ -0.44807361612,  -0.8939966636,  0.0,
+    #                    0.8939966636,  -0.44807361612,  0.0,
+    #                    0.0,  0.0,  1.0 ]
+
+    # extrinsicTrans:  [ 0.0,  0.0,  0.1 ]
+    # extrinsicRot:     [ 0.0,  1.0,  0.0,
+    #                 -1.0,  0.0,  0.0,
+    #                 0.0,  0.0,  1.0 ]
+    # extrinsicRPY: [ 0.0,  1.0,  0.0,
+    #                -1.0,  0.0,  0.0,
+    #                 0.0,  0.0,  1.0 ]
 
     # LOAM feature threshold
     edgeThreshold: 1.0

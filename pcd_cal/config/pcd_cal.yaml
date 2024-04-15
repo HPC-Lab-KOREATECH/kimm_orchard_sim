@@ -15,8 +15,8 @@ pcd_publisher:
 
 laser_scan:
   ros__parameters:
-    clipping_minz: -0.2
-    clipping_maxz: 0.4
+    clipping_minz: 0.2
+    clipping_maxz: 0.8
 
     pcd_topic: "/gazebo_ros_laser_controller/out"
     scan_topic: "/scan"

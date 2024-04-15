@@ -18,7 +18,10 @@ private:
     double target_heading_; // Target heading
     double prevCrossTrackError;
     double integral;
+    double heading_integral_;
+    double heading_ki_;
     double anti_windup_max_;
+    double h_anti_windup_max_;
     double Lf;
     double Lr;
     double L;
@@ -32,7 +35,7 @@ private:
         
 public:
     Stanley()
-        : prevCrossTrackError(0.0), integral(0.0)
+        : prevCrossTrackError(0.0), integral(0.0), heading_integral_(0.0)
     {
         Lf = 0.494/2;
         Lr = 0.494/2;
@@ -41,6 +44,7 @@ public:
         
         kp_ = 0.1;
         ki_ = 0.0;
+        heading_ki_ = 0.0;
         // kd_ = 1.5;
         target_heading_ = 0.0;
         ego_heading_ = 0.0;
@@ -49,7 +53,7 @@ public:
         speed_ = 0.0;
         
 
-
+        h_anti_windup_max_ = 0.0;
         anti_windup_max_ = 0.0;
         heading_gain_ = 1.0;
 
@@ -63,14 +67,25 @@ public:
         kd_ = kd;
     }
 
-    void set_heading_gain(double h_gain)
+    void set_heading_gain(double h_gain, double h_i_gian = 0.0)
     {
         this->heading_gain_ = h_gain;
+        this->heading_ki_  = h_i_gian;
     }
 
     void set_anti_windup_max(double anti_windup_max)
     {
         this->anti_windup_max_ = anti_windup_max;
+    }
+
+    void set_heading_anti_windup_max(double h_anti_windup_max)
+    {
+        this->h_anti_windup_max_ = h_anti_windup_max;
+    }
+
+    void set_heading_integral_term(double heading_integral)
+    {
+        this->heading_integral_ = heading_integral;
     }
 
     void set_stanly_data(float speed, double target_heading, float ego_heading,
@@ -115,12 +130,17 @@ public:
         integral += crossTrackError_ * dt;
         integral = clip(integral, -anti_windup_max_, anti_windup_max_);
 
+        heading_integral_ += tmp_headin_error;
+        heading_integral_ = clip(heading_integral_, -h_anti_windup_max_, h_anti_windup_max_);
         // if (this->speed_ < 1)
         // {
         //     integral = 0;
         // }
 
         double integralTerm = ki_ * integral;
+        double heading_integral_term = heading_ki_ * heading_integral_;
+
+        cout << "heading_integral_ : " << heading_integral_ << endl;
 
         // Calculate the steering angle using Stanley Method
         float PID_steer = proportionalTerm + derivativeTerm + integralTerm;
@@ -136,10 +156,12 @@ public:
 
         steeringAngle.F = nomalize_angle(steeringAngleF);
         steeringAngle.R = nomalize_angle(steeringAngleR);
+
+        // PID_steer = clip(PID_steer, -5.0F, 5.0F);
         
-        PID_steer = clip(PID_steer, -5.0F, 5.0F);
-        l_n_a.linear = PID_steer;
-        l_n_a.angular = heading_term;
+        
+        l_n_a.linear = atan2(PID_steer, (0.1 + this->speed_));
+        l_n_a.angular = heading_term + heading_integral_term;
         
 
         return l_n_a;
@@ -211,110 +233,113 @@ class CombinedSteer : public FeedForward, public Stanley
 private:
     CallbackClass *cb_data_;
 
-    float FF_weight_, stanly_weight_;
-    double deltaMax;
 
-    double pre_com_steerF;
-    double pre_com_steerR;
-    float com_steer_alpha;
     double width;
     double L;
-    double FF_steerF;
-    double FF_steerR;
+    linear_angular combined_steer;
+    float preview_dt = 0.0;
+    int preview_num = 0;
+    float preview_h_e_gain = 1.0;
+    vector<float> preview_gain;
     PointFR stanley_steer;
-    
+    vector<linear_angular> steers;
+    Stanley preview_instance;
 
 public:
     CombinedSteer(CallbackClass *cb_data)
-        : FeedForward(), Stanley(), FF_weight_(1),
-          stanly_weight_(1), deltaMax(3.141592/2.0)
+        : FeedForward(), Stanley()
+          
     {
 
         this->cb_data_ = cb_data;
         L = 0.494;
         width = 0.364;
-        pre_com_steerF = 0;
-        pre_com_steerR = 0;
-        com_steer_alpha = 0.9;
-
-    }
-
-
-    // PointFR calc_combined_steer()
-    // {
-    //     double FeedForwardSteeringF = calc_FF_SteerF();
-    //     double FeedForwardSteeringR = calc_FF_SteerR();
-
-    //     FF_steerF = clip(FeedForwardSteeringF, -deltaMax, deltaMax);
-    //     FF_steerR = clip(FeedForwardSteeringR, -deltaMax, deltaMax);
-
-    //     if (cb_data_->get_odom_sub_flag())
-    //     {
-    //         // stanley
-    //         this->stanley_steer = calc_stanley_steer();
-    //         this->stanley_steer.F = clip(this->stanley_steer.F, -deltaMax, deltaMax);
-    //         this->stanley_steer.R = clip(this->stanley_steer.R, -deltaMax, deltaMax);
-    //         cb_data_->set_down_odom_sub_flag();
-    //     }
-
-    //     // Combine the steering angles
-    //     PointFR combinedSteering;
-    //     combinedSteering.F = FF_weight_ * FF_steerF + stanly_weight_ * stanley_steer.F;
-    //     combinedSteering.R = FF_weight_ * FF_steerR + stanly_weight_ * stanley_steer.R;
-
-    //     double combined_steerF = clip(combinedSteering.F, -deltaMax, deltaMax);
-    //     double combined_steerR = clip(combinedSteering.R, -deltaMax, deltaMax);
-
-    //     double com_lpf_steerF = low_pass_filter(combined_steerF, pre_com_steerF, com_steer_alpha);
-    //     double com_lpf_steerR = low_pass_filter(combined_steerR, pre_com_steerR, com_steer_alpha);
-
-    //     pre_com_steerF = com_lpf_steerF;
-    //     pre_com_steerR = com_lpf_steerR;
-
-    //     PointFR com_lpf_steer;
-    //     com_lpf_steer.F = com_lpf_steerF;
-    //     com_lpf_steer.R = com_lpf_steerR;
-
-
-    //     com_lpf_steer.FL = atan2(tan(com_lpf_steerF) , (1 - (width/(2*L)) * (tan(com_lpf_steerF) - tan(com_lpf_steerR)))); //4ws
-    //     com_lpf_steer.FR = atan2(tan(com_lpf_steerF) , (1 + (width/(2*L)) * (tan(com_lpf_steerF) - tan(com_lpf_steerR)))); //4ws
-    //     com_lpf_steer.RL = atan2(tan(com_lpf_steerR) , (1 - (width/(2*L)) * (tan(com_lpf_steerF) - tan(com_lpf_steerR)))); //4ws
-    //     com_lpf_steer.RR = atan2(tan(com_lpf_steerR) , (1 + (width/(2*L)) * (tan(com_lpf_steerF) - tan(com_lpf_steerR)))); //4ws
         
+    }
+
+    void set_preview_param(float dt, vector<float> gain)
+    {
+        this->preview_dt = dt;
+        this->preview_num = gain.size();
+        this->preview_gain = gain;
+    }
+
+    void set_preview_heading_error_gain(float h_e_g)
+    {
+        this->preview_h_e_gain = h_e_g;
+    }
+
+    linear_angular calc_combined_steer()
+    {
         
-    //     com_lpf_steer.FL = nomalize_angle(com_lpf_steer.FL);
-    //     com_lpf_steer.FR = nomalize_angle(com_lpf_steer.FR);
-    //     com_lpf_steer.RL = nomalize_angle(com_lpf_steer.RL);
-    //     com_lpf_steer.RR = nomalize_angle(com_lpf_steer.RR);
+        if (cb_data_->get_odom_sub_flag())
+        {
+            // stanley preview
+            linear_angular preview_steer = this->calc_stanly_preview();
+            // stanley
+            linear_angular now_stanley_steer = calc_stanley_steer();
 
-    //     com_lpf_steer.FL = clip(com_lpf_steer.FL, -deltaMax, deltaMax);
-    //     com_lpf_steer.FR = clip(com_lpf_steer.FR, -deltaMax, deltaMax);
-    //     com_lpf_steer.RL = clip(com_lpf_steer.RL, -deltaMax, deltaMax);
-    //     com_lpf_steer.RR = clip(com_lpf_steer.RR, -deltaMax, deltaMax);
+            float sum_preview_gain = 0.0;
+            for (size_t i = 0; i < preview_gain.size(); i++)
+            {
+                sum_preview_gain += preview_gain[i];
+            }
 
-    //     return com_lpf_steer;
-    // }
+            // sum both steer
+            
+            this->combined_steer.linear = (1-sum_preview_gain) * now_stanley_steer.linear + sum_preview_gain * preview_steer.linear;
+            this->combined_steer.angular = (1-sum_preview_gain) * now_stanley_steer.angular + sum_preview_gain * preview_steer.angular;
+            
+            cb_data_->set_down_odom_sub_flag();
+        }
 
-
-    double get_FF_steerF()
-    {
-        return FF_steerF;
+        return this->combined_steer;
     }
 
-    double get_FF_steerR()
+    linear_angular calc_stanly_preview()
     {
-        return FF_steerR;
+        this->steers.clear();
+
+        linear_angular sum_preview_steer;
+        sum_preview_steer.angular = 0.0;
+        sum_preview_steer.linear = 0.0;
+        // sync stanly n preview p gain
+        preview_instance.set_stanly_gain(get_stanley_P_gain(), 0.0, 0.0);
+        preview_instance.set_heading_gain(this->preview_h_e_gain);
+        // preview_instance.set_heading_gain(1.0);
+
+        cb_data_->calc_predict_odometry_for_stanley(preview_dt, preview_num);
+
+        vector<Point> predict_pos = cb_data_->get_stanley_predict_pos();
+        vector<float> predict_yaw = cb_data_->get_stanley_predict_yaw();
+
+        for (int i = 0; i < preview_num; i++){
+            // calc_n_get_lat_error를 호출하면 closest point를 찾고 그 인덱스는
+            // closest_index에 저장된다.
+            double lat_error = cb_data_->calc_n_get_lat_error(predict_pos[i]);
+            float tmp_speed = get_speed_in_stanley();
+            double target_yaw = cb_data_->get_pd_path_yaw();
+
+            preview_instance.set_stanly_data(tmp_speed, target_yaw, predict_yaw[i], lat_error);
+            linear_angular steer = preview_instance.calc_stanley_steer();
+            
+
+            sum_preview_steer.linear += steer.linear * this->preview_gain[i];
+            sum_preview_steer.angular += steer.angular * this->preview_gain[i];
+
+            steers.push_back(steer);
+        }
+
+        return sum_preview_steer;
     }
 
-    double get_stanley_steerF()
-    {
-        return stanley_steer.F;
-    }    
 
-    double get_stanley_steerR()
+     
+
+    vector<linear_angular> get_preview_steers()
     {
-        return stanley_steer.R;
-    }    
+        return this->steers;
+    }
 
 
 };

@@ -152,6 +152,18 @@ public:
     float globalMapVisualizationPoseDensity;
     float globalMapVisualizationLeafSize;
 
+    // localization
+    bool doMapping;
+    std::string map_dir;
+    string gpsNaiveTopic;
+    bool isLocalizationMode;
+
+    // converter
+    std::string gpsToOdomPubTopic;
+    std::string odomToGpsPubTopic;
+    std::string gpsToOdomSubTopic;
+    std::string odomToGpsSubTopic;
+
     ParamServer(std::string node_name, const rclcpp::NodeOptions & options) : Node(node_name, options)
     {
         declare_parameter("pointCloudTopic", "points");
@@ -185,6 +197,27 @@ public:
         get_parameter("savePCD", savePCD);
         declare_parameter("savePCDDirectory", "/Downloads/LOAM/");
         get_parameter("savePCDDirectory", savePCDDirectory);
+
+
+        // localization option
+        declare_parameter("doMapping", false);
+        get_parameter("doMapping", doMapping);
+        declare_parameter("map_dir", "/root/map/");
+        get_parameter("map_dir", map_dir);
+        declare_parameter("gpsNaiveTopic", "fix");
+        get_parameter("gpsNaiveTopic", gpsNaiveTopic);
+        declare_parameter("isLocalizationMode", false);
+        get_parameter("isLocalizationMode", isLocalizationMode);
+
+        // converter
+        declare_parameter("gpsToOdomPubTopic", "gpsToOdomPub");
+        get_parameter("gpsToOdomPubTopic", gpsToOdomPubTopic);
+        declare_parameter("odomToGpsPubTopic", "odomToGpsPub");
+        get_parameter("odomToGpsPubTopic", odomToGpsPubTopic);
+        declare_parameter("gpsToOdomSubTopic", "gpsToOdomSub");
+        get_parameter("gpsToOdomSubTopic", gpsToOdomSubTopic);
+        declare_parameter("odomToGpsSubTopic", "odomToGpsSub");
+        get_parameter("odomToGpsSubTopic", odomToGpsSubTopic);
 
         std::string sensorStr;
         declare_parameter("sensor", "ouster");

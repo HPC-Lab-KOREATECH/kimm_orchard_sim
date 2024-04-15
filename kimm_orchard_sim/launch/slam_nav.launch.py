@@ -14,7 +14,7 @@ from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, Exec
 from launch.substitutions import LaunchConfiguration
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import PythonExpression
-
+from launch.substitutions import ThisLaunchFileDir
 from launch_ros.actions import Node
 
 def get_xacro_to_doc(xacro_file_path, mappings):
@@ -159,6 +159,13 @@ def generate_launch_description():
         name='path',
         parameters=[{"use_sim_time": use_sim_time}],
     )
+
+    local_path_pub = Node(
+        package='kimm_orchard_sim',
+        executable='local_path_publisher.py',
+        name='path',
+        parameters=[{"use_sim_time": use_sim_time}],
+    )
     
 
     state_pub = Node(
@@ -215,6 +222,29 @@ def generate_launch_description():
         output='screen',
     )
 
+    # Include lio_sam run_loc.launch.py
+    lio_sam_launch_file_path = join(
+        get_package_share_directory('lio_sam'), # Replace 'lio_sam' with the correct package name if different
+        'launch',
+        'run_loc.launch.py'
+    )
+    lio_sam_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(lio_sam_launch_file_path)
+        # Here you can add launch arguments if 'run_loc.launch.py' accepts any
+    )
+
+    # Include nav2_bringup navigation_launch.py with use_sim_time:=True
+    nav2_bringup_launch_file_path = join(
+        get_package_share_directory('nav2_bringup'), # Replace 'nav2_bringup' with the correct package name if different
+        'launch',
+        'navigation_launch.py'
+    )
+    nav2_bringup_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(nav2_bringup_launch_file_path),
+        launch_arguments={'use_sim_time': 'True'}.items() # Passing the 'use_sim_time' argument as True
+    )
+
+
     
     return LaunchDescription([
         # Declare launch arguments
@@ -253,6 +283,9 @@ def generate_launch_description():
         base_link_state_pub,
         laser_scan,
         static_transform_publisher,
-        map_pub
+        map_pub,
+        local_path_pub,
+        # lio_sam_launch,
+        # nav2_bringup_launch
     ])
     

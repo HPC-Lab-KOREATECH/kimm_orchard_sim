@@ -48,6 +48,8 @@ sudo apt-get install -y \
     freeglut3-dev \
     libglew-dev \
     libglfw3-dev && \
+    ros-humble-geographic-msgs \
+    libgeographic-dev 
 
 pip install transforms3d utm && \
 sudo apt-get autoremove -y && \

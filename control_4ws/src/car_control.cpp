@@ -2,6 +2,7 @@
 #include <std_msgs/msg/float64.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
 #include <std_msgs/msg/int16.hpp>
+#include <std_msgs/msg/bool.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 #include <nav_msgs/msg/path.hpp>
 #include <geometry_msgs/msg/twist.hpp>
@@ -12,6 +13,7 @@
 #include "control/lat_control.hpp"
 #include "control/lon_control.hpp"
 #include "control/mission_param.hpp"
+#include "control/kalman_filter.hpp"
 
 #include "ranger_msgs/msg/actuator_state_array.hpp"
 #include "ranger_msgs/msg/actuator_state.hpp"
@@ -24,6 +26,9 @@ bool IS_PRINT = true;
 class CarControl : public rclcpp::Node
 {
 private:
+    std::shared_ptr<KalmanFilter2D> km_filter_ptr;
+    KalmanFilter2D *km_filter;
+    
     std::shared_ptr<CallbackClass> callback_data_ptr;
     CallbackClass *cb_data;
 
@@ -33,7 +38,7 @@ private:
     std::shared_ptr<LonController> lon_control_ptr;
     LonController *lon_control;
 
-    std::shared_ptr<ControlGainTuning> param_manage_ptr;
+    std::shared_ptr<ControlGainTuning> param_manage_ptr;  
     ControlGainTuning *param_manage;
 
     rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr lo_odom_sub;
@@ -41,19 +46,23 @@ private:
     rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr lo_imu__sub;
     
     rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr pl_local_sub;
-    // rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr pl_local_sub;
+    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr pl_control_flag_sub;
     rclcpp::Subscription<std_msgs::msg::Int16>::SharedPtr pl_cont_sub;
     rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr pl_pyaw_sub;
     rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr pl_pyaws_sub;
+    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub;
 
     rclcpp::Subscription<ranger_msgs::msg::ActuatorStateArray>::SharedPtr ranger_data_sub;
 
     rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr ranger_data_pub;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr tmp_data_pub;
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub;
-
     rclcpp::TimerBase::SharedPtr timer_;
     rclcpp::Time last_execution_time_ = now();
+    
+    
+    double angular_z_pre;
+    bool c_mode;
 public:
     CarControl()
         : Node("car_control")
@@ -63,7 +72,11 @@ public:
         
 
         // <클레스들 인스턴스화>------------------------------------------------------
-        callback_data_ptr = std::make_shared<CallbackClass>();
+        
+        km_filter_ptr = std::make_shared<KalmanFilter2D>();
+        km_filter = km_filter_ptr.get();
+        
+        callback_data_ptr = std::make_shared<CallbackClass>(km_filter);
         cb_data = callback_data_ptr.get();
 
         lat_control_ptr = std::make_shared<CombinedSteer>(cb_data);
@@ -72,7 +85,7 @@ public:
         lon_control_ptr = std::make_shared<LonController>();
         lon_control = lon_control_ptr.get();
 
-        param_manage_ptr = std::make_shared<ControlGainTuning>(cb_data, lat_control, lon_control);
+        param_manage_ptr = std::make_shared<ControlGainTuning>(cb_data, lat_control, lon_control, km_filter);
         param_manage = param_manage_ptr.get();
 
         // ------------------------------------------------------</클레스들 인스턴스화>
@@ -82,12 +95,14 @@ public:
         lo_odom_sub = this->create_subscription<std_msgs::msg::Float64MultiArray>("/Local/utm", 1, std::bind(&CallbackClass::lo_odom_cb, cb_data, std::placeholders::_1));
         lo_curr_sub = this->create_subscription<std_msgs::msg::Float64>("/Local/heading", 1, std::bind(&CallbackClass::lo_yaw_cb, cb_data, std::placeholders::_1));
         lo_imu__sub = this->create_subscription<sensor_msgs::msg::Imu>("/Local/imu_hpc/out", 1, std::bind(&CallbackClass::lo_imu_cb, cb_data, std::placeholders::_1));
-
+        
         // Planning
         pl_local_sub = this->create_subscription<nav_msgs::msg::Path>("/Planning/local_path", 1, std::bind(&CallbackClass::pl_local_path_cb, cb_data, std::placeholders::_1));
         
+        pl_control_flag_sub = this->create_subscription<std_msgs::msg::Bool>("/Planning/Control_SW", 1, std::bind(&CallbackClass::pl_control_sw_cb, cb_data, std::placeholders::_1));
+        //ranger data
         ranger_data_sub = this->create_subscription<ranger_msgs::msg::ActuatorStateArray>("/ranger_states", 1, std::bind(&CallbackClass::ranger_data_cb, cb_data, std::placeholders::_1));
-  
+        cmd_vel_sub = this->create_subscription<geometry_msgs::msg::Twist>("/ranger/cmd_vel", 1, std::bind(&CallbackClass::ranger_vel_cb, cb_data, std::placeholders::_1));
         // -----------------------------------------------------------</SUBSCRIBER>
         // <PUBLISHER> ------------------------------------------------------------
 
@@ -97,8 +112,9 @@ public:
         // ------------------------------------------------------------</PUBLISHER>
         timer_ = this->create_wall_timer(std::chrono::milliseconds(10),
                                          std::bind(&CarControl::timer_callback, this));
-        
-        
+
+        angular_z_pre = 0.0;
+        c_mode = false;
     }
 
     void timer_callback()
@@ -112,15 +128,15 @@ public:
         double time_diff_ms = time_diff.seconds() * 1000.0;
         last_execution_time_ = current_time;
 
-        double wheel_radius = 0.1;
+        double wheel_radius = 0.105;
         double L = 0.494;
         double width = 0.364;
 
-        float curr_speed = cb_data->get_speed();
-        float wheel_speed_FL = cb_data->get_wheel_speed_FL() * wheel_radius; // m/s 
-        float wheel_speed_FR = cb_data->get_wheel_speed_FR() * wheel_radius; // m/s 
-        float wheel_speed_RL = cb_data->get_wheel_speed_RL() * wheel_radius; // m/s 
-        float wheel_speed_RR = cb_data->get_wheel_speed_RR() * wheel_radius; // m/s 
+        float curr_speed = sqrt((cb_data->get_vx_est_ki(), 2) + pow(cb_data->get_vx_est_ki(), 2));
+        float wheel_speed_FL = cb_data->get_wheel_speed_FL(); // m/s 
+        float wheel_speed_FR = cb_data->get_wheel_speed_FR(); // m/s 
+        float wheel_speed_RL = cb_data->get_wheel_speed_RL(); // m/s 
+        float wheel_speed_RR = cb_data->get_wheel_speed_RR(); // m/s 
 
         float wheel_steer_FL = cb_data->get_wheel_steer_FL();
         float wheel_steer_FR = cb_data->get_wheel_steer_FR();
@@ -147,15 +163,7 @@ public:
             // return;
         }
 
-        // 속도 추정
-        double vel_est_fl = wheel_speed_FL + cos(wheel_steer_FL) * yaw_rate * width / 2.0 \
-                        - sin(wheel_steer_FL) * yaw_rate * L / 2.0;
-        double vel_est_fr = wheel_speed_FR - cos(wheel_steer_FR) * yaw_rate * width / 2.0 \
-                        - sin(wheel_steer_FR) * yaw_rate * L / 2.0;
-        double vel_est_rl = wheel_speed_FL + cos(wheel_steer_FL) * yaw_rate * width / 2.0 \
-                        + sin(wheel_steer_FL) * yaw_rate * L / 2.0;
-        double vel_est_rr = wheel_speed_RR - cos(wheel_steer_RR) * yaw_rate * width / 2.0 \
-                        + sin(wheel_steer_RR) * yaw_rate * L / 2.0;
+        
 
 
 
@@ -164,6 +172,7 @@ public:
 
         // Control Switch
         int cs = cb_data->get_control_switch();
+        bool control_sw = cb_data->get_control_sw();
         GasAndBrake acc_val_FL;
         GasAndBrake acc_val_FR;
         GasAndBrake acc_val_RL;
@@ -189,24 +198,67 @@ public:
         // lat_control->set_stanley_integral_val(tmp_integ/2.0);
         // }
 
-        cout << "integral : " << lat_control->get_stanley_integral_val() << endl;
-
         lat_control->set_stanly_data(curr_speed, pd_path_yaw, yaw, lat_error);
         lat_control->set_curvature(path_curature);
 
-        linear_angular l_n_a = lat_control->calc_stanley_steer();
+        // linear_angular l_n_a = lat_control->calc_stanley_steer();
+        linear_angular l_n_a = lat_control->calc_combined_steer();
+        // double ff_control = lat_control->calc_FF_SteerR();
+        double ff_control = path_curature  * target_speed;
+
+        double linear_x = target_speed - min(abs((l_n_a.linear / (M_PI / 2.0)) * target_speed), target_speed);
+        double linear_y = max(min((l_n_a.linear / (M_PI / 2.0)) * target_speed , target_speed), -target_speed);
+        double angular_z = -max(min((l_n_a.angular/ (M_PI / 2.0)) * target_speed , target_speed), -target_speed);
+
+        angular_z = low_pass_filter(angular_z, angular_z_pre, 0.5);
+        angular_z_pre = angular_z;
+
+        abs(l_n_a.linear) > abs(l_n_a.angular);
+        double c_mode_condition = 0.6;
+
+        if(c_mode)
+        {
+            if (abs(l_n_a.linear) < abs(l_n_a.angular) * c_mode_condition)
+            {
+                c_mode = false;
+            }
+        }
+        else{
+            if (abs(l_n_a.linear)* c_mode_condition > abs(l_n_a.angular))
+            {
+                c_mode = true;
+            }
+        }
+
+
+
+
+
+
+
+        if (c_mode){
+            angular_z = 0;
+        }
+
+        else{
+            linear_x = target_speed;
+            if (abs(angular_z) >= target_speed - 0.1){
+                linear_x = 0;
+            }
+            angular_z = (angular_z + (angular_z / max(abs(angular_z), 0.01))* abs(linear_y) * 2.0); //+ linear_y - ff_controlv  
+            linear_y = 0; 
+        }
+
+
         
-        double linear_x = (sqrt(pow(5,2) - pow(l_n_a.linear, 2)) * target_speed) / 5.0;
-        double linear_y = (l_n_a.linear * target_speed) / 5.0;
-        double angular_z = l_n_a.angular;
         
 
 
 
-        switch (cs)
+        switch (control_sw)
         {
 
-        case -1: // 정지 모드
+        case false: // 주행 모드
             // acc_val_FL.gas = 0.0;
             // acc_val_FL.brake = 180;
 
@@ -220,7 +272,10 @@ public:
             // acc_val_RR.brake = 180;
             break;
 
-        case 0: // normal 모드
+        case true: // 정지 모드
+            lat_control->set_heading_integral_term(0.0);
+            linear_x = 0.0;
+            linear_y = 0.0;
             
 
             // 함수화 하자
@@ -274,7 +329,7 @@ public:
 
         twist_msg->linear.x = linear_x; // 선속도 x 방향 설정
         twist_msg->linear.y = linear_y; // 선속도 y 방향 설정
-        twist_msg->angular.z = angular_z; // 각속도 z 방향 설정
+        twist_msg->angular.z = -angular_z; // 각속도 z 방향 설정
 
         cmd_vel_pub->publish(*twist_msg);
         
@@ -292,10 +347,10 @@ public:
         // car_data_msg->data.push_back(steerAngle.RR);   
 
 
-        car_data_msg->data.push_back(0);
-        car_data_msg->data.push_back(0);
-        car_data_msg->data.push_back(0);
-        car_data_msg->data.push_back(0);
+        // car_data_msg->data.push_back(0);
+        // car_data_msg->data.push_back(5);
+        // car_data_msg->data.push_back(0);
+        // car_data_msg->data.push_back(0);
 
         // car_data_msg->data.push_back(0);
         // car_data_msg->data.push_back(0.7);
@@ -318,7 +373,19 @@ public:
         // tmp_plot_val_msg->data.push_back(target_speed_FL);                     //6
         // tmp_plot_val_msg->data.push_back(target_speed_FR);                     //7
         // tmp_plot_val_msg->data.push_back(target_speed_RL);                     //8
-        // tmp_plot_val_msg->data.push_back(target_speed_RR);                     //9
+        // tmp_plot_val_msg->data.push_back(target_speed_RR);                     //9 
+        // tmp_plot_val_msg->data.push_back(sqrt((km_filter->get_kf_vx(), 2) + pow(km_filter->get_kf_vy(), 2))); //10
+        // tmp_plot_val_msg->data.push_back(sqrt((cb_data->get_vx_est_ki(), 2) + pow(cb_data->get_vx_est_ki(), 2))); 
+        tmp_plot_val_msg->data.push_back(cb_data->get_vx_est_ki()); //12
+        tmp_plot_val_msg->data.push_back(cb_data->get_vy_est_ki()); 
+        // tmp_plot_val_msg->data.push_back(km_filter->get_dt()); //14  
+        tmp_plot_val_msg->data.push_back(cb_data->get_vx_km()); //15
+        tmp_plot_val_msg->data.push_back(cb_data->get_vy_km()); //16
+        // tmp_plot_val_msg->data.push_back(cb_data->get_vx_math()); //17
+        // tmp_plot_val_msg->data.push_back(cb_data->get_vy_math()); //18
+
+        // tmp_plot_val_msg->data.push_back(cb_data->get_vx_est_ki_pro()); //19
+        // tmp_plot_val_msg->data.push_back(cb_data->get_vy_est_ki_pro()); //20
 
         auto end_time = std::chrono::steady_clock::now();
         auto duration = end_time - start_time;

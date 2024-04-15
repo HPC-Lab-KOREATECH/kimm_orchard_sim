@@ -29,12 +29,18 @@ find_package(PCL REQUIRED)
 find_package(GTSAM REQUIRED)
 find_package(Eigen REQUIRED)
 find_package(OpenMP REQUIRED)
+find_package(geographic_msgs REQUIRED)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "/usr/share/cmake/geographiclib/")
+
+
+find_package(robot_localization REQUIRED)
+
 
 include_directories(
   include/lio_sam
 )
 
-rosidl_generate_interfaces(${PROJECT_NAME} "msg/CloudInfo.msg" "srv/SaveMap.srv" DEPENDENCIES std_msgs sensor_msgs)
+rosidl_generate_interfaces(${PROJECT_NAME} "msg/CloudInfo.msg" "srv/SaveMap.srv"  DEPENDENCIES std_msgs sensor_msgs )
 
 
 
@@ -52,12 +58,25 @@ ament_target_dependencies(${PROJECT_NAME}_imuPreintegration rclcpp rclpy std_msg
 target_link_libraries(${PROJECT_NAME}_imuPreintegration gtsam "${cpp_typesupport_target}")
 
 add_executable(${PROJECT_NAME}_mapOptimization src/mapOptmization.cpp)
-ament_target_dependencies(${PROJECT_NAME}_mapOptimization rclcpp rclpy std_msgs sensor_msgs geometry_msgs nav_msgs pcl_msgs visualization_msgs tf2 tf2_ros tf2_eigen tf2_sensor_msgs tf2_geometry_msgs OpenCV PCL GTSAM)
+ament_target_dependencies(${PROJECT_NAME}_mapOptimization rclcpp rclpy std_msgs sensor_msgs geometry_msgs nav_msgs pcl_msgs visualization_msgs tf2 tf2_ros tf2_eigen tf2_sensor_msgs tf2_geometry_msgs OpenCV PCL GTSAM geographic_msgs robot_localization)
 if (OpenMP_CXX_FOUND)
   target_link_libraries(${PROJECT_NAME}_mapOptimization gtsam "${cpp_typesupport_target}" OpenMP::OpenMP_CXX)
 else()
   target_link_libraries(${PROJECT_NAME}_mapOptimization gtsam "${cpp_typesupport_target}")
 endif()
+
+add_executable(${PROJECT_NAME}_localization src/mapOptimizationLocalization.cpp)
+ament_target_dependencies(${PROJECT_NAME}_localization rclcpp rclpy std_msgs sensor_msgs geometry_msgs nav_msgs pcl_msgs visualization_msgs tf2 tf2_ros tf2_eigen tf2_sensor_msgs tf2_geometry_msgs OpenCV PCL GTSAM geographic_msgs robot_localization)
+if (OpenMP_CXX_FOUND)
+  target_link_libraries(${PROJECT_NAME}_localization gtsam "${cpp_typesupport_target}" OpenMP::OpenMP_CXX)
+else()
+  target_link_libraries(${PROJECT_NAME}_localization gtsam "${cpp_typesupport_target}")
+endif()
+
+add_executable(${PROJECT_NAME}_gps_converter src/GPSConverter.cpp)
+ament_target_dependencies(${PROJECT_NAME}_gps_converter rclcpp rclpy std_msgs sensor_msgs geometry_msgs nav_msgs pcl_msgs visualization_msgs tf2 tf2_ros tf2_eigen tf2_sensor_msgs tf2_geometry_msgs OpenCV PCL robot_localization)
+rosidl_target_interfaces(${PROJECT_NAME}_gps_converter ${PROJECT_NAME} "rosidl_typesupport_cpp")
+
 
 
 install(
@@ -89,6 +108,19 @@ install(
   TARGETS ${PROJECT_NAME}_mapOptimization
   DESTINATION lib/${PROJECT_NAME}
 )
+
+
+install(
+  TARGETS ${PROJECT_NAME}_localization
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+
+install(
+  TARGETS ${PROJECT_NAME}_gps_converter
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 
 install(
   DIRECTORY "include/"

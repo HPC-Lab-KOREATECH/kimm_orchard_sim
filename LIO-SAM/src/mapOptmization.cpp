@@ -15,6 +15,8 @@
 #include <gtsam/inference/Symbol.h>
 
 #include <gtsam/nonlinear/ISAM2.h>
+#include "robot_localization/srv/get_datum.hpp"  
+
 
 using namespace gtsam;
 
@@ -151,6 +153,9 @@ public:
 
     std::unique_ptr<tf2_ros::TransformBroadcaster> br;
 
+
+    rclcpp::Client<robot_localization::srv::GetDatum>::SharedPtr getDatumClient; // create for localization
+
     mapOptimization(const rclcpp::NodeOptions & options) : ParamServer("lio_sam_mapOptimization", options)
     {
         ISAM2Params parameters;
@@ -176,6 +181,9 @@ public:
             "lio_loop/loop_closure_detection", qos,
             std::bind(&mapOptimization::loopInfoHandler, this, std::placeholders::_1));
 
+        getDatumClient = this->create_client<robot_localization::srv::GetDatum>("getDatum"); 
+
+
         auto saveMapService = [this](const std::shared_ptr<rmw_request_id_t> request_header, const std::shared_ptr<lio_sam::srv::SaveMap::Request> req, std::shared_ptr<lio_sam::srv::SaveMap::Response> res) -> void {
             (void)request_header;
             string saveMapDirectory;
@@ -196,6 +204,27 @@ public:
             pcl::PointCloud<PointType>::Ptr globalSurfCloud(new pcl::PointCloud<PointType>());
             pcl::PointCloud<PointType>::Ptr globalSurfCloudDS(new pcl::PointCloud<PointType>());
             pcl::PointCloud<PointType>::Ptr globalMapCloud(new pcl::PointCloud<PointType>());
+
+
+            auto request = std::make_shared<robot_localization::srv::GetDatum::Request>();
+            getDatumClient->async_send_request(request, [saveMapDirectory, this](rclcpp::Client<robot_localization::srv::GetDatum>::SharedFuture future) {
+                auto result = future.get();
+                auto geo_point = result->geo_pose.position;
+                auto geo_orientation = result->geo_pose.orientation;
+
+
+                std::ofstream file(saveMapDirectory + "/initial_LLA_orientation");
+                if (file.is_open())
+                {
+                    file << std::fixed << std::setprecision(15);
+                    file << geo_point.latitude << " " << geo_point.longitude << " " << geo_point.altitude << " " << geo_orientation.x  << " " << geo_orientation.y  << " " << geo_orientation.z << " " << geo_orientation.w << std::endl;
+                    file.close();
+                }
+                else
+                    RCLCPP_ERROR(this->get_logger(), "Unable to open file for writing : initial");
+            });
+
+
             for (int i = 0; i < (int)cloudKeyPoses3D->size(); i++) 
             {
                 *globalCornerCloud += *transformPointCloud(cornerCloudKeyFrames[i],  &cloudKeyPoses6D->points[i]);
@@ -230,6 +259,7 @@ public:
             res->success = ret == 0;
             downSizeFilterCorner.setLeafSize(mappingCornerLeafSize, mappingCornerLeafSize, mappingCornerLeafSize);
             downSizeFilterSurf.setLeafSize(mappingSurfLeafSize, mappingSurfLeafSize, mappingSurfLeafSize);
+
             cout << "****************************************************" << endl;
             cout << "Saving map to pcd files completed\n" << endl;
             return;
@@ -251,6 +281,8 @@ public:
 
         allocateMemory();
     }
+
+
 
     void allocateMemory()
     {
@@ -401,6 +433,7 @@ public:
 
     void visualizeGlobalMapThread()
     {
+
         rclcpp::Rate rate(0.2);
         while (rclcpp::ok()){
             rate.sleep();
@@ -510,6 +543,7 @@ public:
         while (rclcpp::ok())
         {
             rate.sleep();
+            
             performLoopClosure();
             visualizeLoopClosure();
         }
@@ -1451,6 +1485,8 @@ public:
                 }
 
                 // GPS not properly initialized (0,0,0)
+                if(abs(gps_x) > 1000 && abs(gps_y) > 1000)
+                    continue;
                 if (abs(gps_x) < 1e-6 && abs(gps_y) < 1e-6)
                     continue;
 
@@ -1508,6 +1544,7 @@ public:
         addGPSFactor();
 
         // loop factor
+
         addLoopFactor();
 
         // cout << "****************************************************" << endl;
@@ -1577,6 +1614,8 @@ public:
         // save key frame cloud
         cornerCloudKeyFrames.push_back(thisCornerKeyFrame);
         surfCloudKeyFrames.push_back(thisSurfKeyFrame);
+
+        // std::cout << "slam : " << latestEstimate.translation().x() << " " << latestEstimate.translation().y() << " " << latestEstimate.translation().z() << std::endl;
 
         // save path for visualization
         updatePath(thisPose6D);
