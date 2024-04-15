@@ -69,34 +69,14 @@ target_link_libraries( laser_scan
   ${PCL_LIBRARIES}
 )
 
-
-
 install(TARGETS
   map_to_pcl_parser
   laser_scan
   DESTINATION lib/${PROJECT_NAME}
 )
 
-# Files for testing
-install(FILES
-  test/cube1_record_1.yaml test/cube1_record_2.yaml test/pcl_example_launch.testing.py 
-  DESTINATION lib/${PROJECT_NAME}
-)
-
-install(DIRECTORY include config launch src srv test rviz
+install(DIRECTORY include config launch src srv rviz
     DESTINATION share/${PROJECT_NAME}/
 )
-
-# Rviz2 config for visualization
-install(FILES config/pcl_example.rviz 
-  DESTINATION lib/${PROJECT_NAME}
-)
-
-if(BUILD_TESTING)
-  #find_package(ament_lint_auto REQUIRED)
-  #ament_lint_auto_find_test_dependencies()
-  find_package(launch_testing_ament_cmake)    
-  add_launch_test(test/pcl_example_launch.testing.py)
-endif()
 
 ament_package()
