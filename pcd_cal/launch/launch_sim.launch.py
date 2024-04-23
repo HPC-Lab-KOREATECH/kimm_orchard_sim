@@ -23,7 +23,7 @@ def generate_launch_description():
     yaml_path = os.path.join(
         get_package_share_directory('pcd_cal'),
         'config',
-        'pcd_cal.yaml'
+        'tree_grid_sim.yaml'
     )
     
     rviz_path = os.path.join(

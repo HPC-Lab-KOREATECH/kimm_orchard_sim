@@ -35,8 +35,8 @@ class Commander(Node):
         
 
     def cmd_callback(self, msg):
-        vel_msg.linear.x = msg.linear.x
-        vel_msg.linear.y = msg.linear.y
+        vel_msg.linear.x = msg.linear.x *3.0
+        vel_msg.linear.y = msg.linear.y *3.0
         vel_msg.angular.z = -msg.angular.z
         
     def timer_callback(self):

@@ -7,6 +7,9 @@
 #include <fstream>
 #include <Eigen/Core>
 #include <Eigen/Dense>
+#include <cmath>
+#include <chrono>
+#include <thread>
 
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
@@ -96,7 +99,7 @@ public:
     publisher_pcd_tree_line = this->create_publisher<sensor_msgs::msg::PointCloud2>("point_cloud_tree_line", 10);
     publisher_pcd_tree_grid = this->create_publisher<sensor_msgs::msg::PointCloud2>("point_cloud_tree_grid", 10);
     publisher_pcd_tree_interpolation = this->create_publisher<sensor_msgs::msg::PointCloud2>("point_cloud_tree_interpolation", 10);
-    publisher_2d_occupancy_grid = this->create_publisher<nav_msgs::msg::OccupancyGrid>("two_d_grid", 10);
+    publisher_2d_occupancy_grid = this->create_publisher<nav_msgs::msg::OccupancyGrid>("map", 10);
     timer_ = this->create_wall_timer(std::chrono::seconds(5), std::bind(&PCDPublisher::publishPointCloud, this));
   }
 
@@ -143,6 +146,18 @@ private:
     pass.setFilterLimits(clipping_minz, clipping_maxz);  // minZ와 maxZ는 필터링할 Z값의 범위입니다.
     pass.filter(*cloud_filtered);
 
+    // pass.setInputCloud(cloud_filtered);
+    // pass.setFilterFieldName("x");
+    // pass.setFilterLimits(-100.0, 100.0);  // minZ와 maxZ는 필터링할 Z값의 범위입니다.
+    // pass.filter(*cloud_filtered);
+
+    // pass.setInputCloud(cloud_filtered);
+    // pass.setFilterFieldName("y");
+    // pass.setFilterLimits(-5.0, 0.0);  // minZ와 maxZ는 필터링할 Z값의 범위입니다.
+    // pass.filter(*cloud_filtered);
+
+    // RCLCPP_INFO(this->get_logger(), "PCD size : %ld", cloud_filtered -> size());
+
     // try {
     //     croped_pcd = cropPointCloud(cloud_filtered);
     // } catch (const std::exception& e) {
@@ -156,42 +171,36 @@ private:
         RCLCPP_ERROR(rclcpp::get_logger("pcd_publisher"), "Exception caught in kdtree_search_radius: %s", e.what());
         return;
     }
-
     try {
         cloud_axis = find_point_cloud_coordinate();
     } catch (const std::exception& e) {
         RCLCPP_ERROR(rclcpp::get_logger("pcd_publisher"), "Exception caught in find_point_cloud_coordinate: %s", e.what());
         return;
     }
-
     try {
         cloud_tree_center = find_point_cloud_center(cloud_radius);
     } catch (const std::exception& e) {
         RCLCPP_ERROR(rclcpp::get_logger("pcd_publisher"), "Exception caught in find_point_cloud_center: %s", e.what());
         return;
     }
-
     try {
         point_cloud_tree_clustered = find_cluster(cloud_tree_center);
     } catch (const std::exception& e) {
         RCLCPP_ERROR(rclcpp::get_logger("pcd_publisher"), "Exception caught in find_cluster: %s", e.what());
         return;
     }
-
     try {
         point_cloud_tree_line = find_tree_line(point_cloud_tree_clustered);
     } catch (const std::exception& e) {
         RCLCPP_ERROR(rclcpp::get_logger("pcd_publisher"), "Exception caught in find_tree_line: %s", e.what());
         return;
     }
-
     try {
-        point_cloud_tree_grid = find_grid(point_cloud_tree_line, cloud_tree_center);
+        point_cloud_tree_grid = find_grid(point_cloud_tree_line, cloud_tree_center, cloud_filtered);
     } catch (const std::exception& e) {
         RCLCPP_ERROR(rclcpp::get_logger("pcd_publisher"), "Exception caught in find_grid: %s", e.what());
         return;
     }
-
     try {
         saveOccupancyGridAsYAML(grid_2d, map_filename, yaml_filename);
         saveOccupancyGridAsPGM(grid_2d, map_filename);
@@ -199,61 +208,60 @@ private:
         RCLCPP_ERROR(rclcpp::get_logger("pcd_publisher"), "Exception caught in saving_occupancy_grid: %s", e.what());
         return;
     }
-
     // save_pcd(cloud_tree_center);
 
     sensor_msgs::msg::PointCloud2 output1;
     pcl::toROSMsg(*cloud, output1);
-    output1.header.frame_id = "point_cloud_frame";
+    output1.header.frame_id = "map";
     output1.header.stamp = this->get_clock()->now();
     publisher_pcd->publish(output1);
 
     sensor_msgs::msg::PointCloud2 output2;
     pcl::toROSMsg(*cloud_radius, output2);
-    output2.header.frame_id = "point_cloud_frame";
+    output2.header.frame_id = "map";
     output2.header.stamp = this->get_clock()->now();
     publisher_pcd_filterd->publish(output2);
 
     sensor_msgs::msg::PointCloud2 output3;
     pcl::toROSMsg(*cloud_filtered, output3);
-    output3.header.frame_id = "point_cloud_frame";
+    output3.header.frame_id = "map";
     output3.header.stamp = this->get_clock()->now();
     publisher_pcd_clipped->publish(output3);
 
     sensor_msgs::msg::PointCloud2 output4;
     pcl::toROSMsg(*cloud_axis, output4);
-    output4.header.frame_id = "point_cloud_frame";
+    output4.header.frame_id = "map";
     output4.header.stamp = this->get_clock()->now();
     publisher_pcd_coordinate->publish(output4);
 
     sensor_msgs::msg::PointCloud2 output5;
     pcl::toROSMsg(*cloud_tree_center, output5);
-    output5.header.frame_id = "point_cloud_frame";
+    output5.header.frame_id = "map";
     output5.header.stamp = this->get_clock()->now();
     publisher_pcd_tree_center->publish(output5);
 
     if (point_cloud_tree_clustered->size ()) {
       sensor_msgs::msg::PointCloud2 output6;
       pcl::toROSMsg(*point_cloud_tree_clustered, output6);
-      output6.header.frame_id = "point_cloud_frame";
+      output6.header.frame_id = "map";
       output6.header.stamp = this->get_clock()->now();
       publisher_pcd_tree_clustered->publish(output6);
 
       sensor_msgs::msg::PointCloud2 output7;
       pcl::toROSMsg(*point_cloud_tree_line, output7);
-      output7.header.frame_id = "point_cloud_frame";
+      output7.header.frame_id = "map";
       output7.header.stamp = this->get_clock()->now();
       publisher_pcd_tree_line->publish(output7);
 
       sensor_msgs::msg::PointCloud2 output8;
       pcl::toROSMsg(*point_cloud_tree_grid, output8);
-      output8.header.frame_id = "point_cloud_frame";
+      output8.header.frame_id = "map";
       output8.header.stamp = this->get_clock()->now();
       publisher_pcd_tree_grid->publish(output8);
 
       sensor_msgs::msg::PointCloud2 output9;
       pcl::toROSMsg(*point_interpolation_merged, output9);
-      output9.header.frame_id = "point_cloud_frame";
+      output9.header.frame_id = "map";
       output9.header.stamp = this->get_clock()->now();
       publisher_pcd_tree_interpolation->publish(output9);
 
@@ -432,6 +440,8 @@ private:
     }
     linear_curve curve_fittied;
 
+    // RCLCPP_INFO(this->get_logger(), "%ld", cloud -> size());
+
     pcl::PCA<pcl::PointXYZI> pca;
     pca.setInputCloud(cloud);
 
@@ -462,7 +472,7 @@ private:
 
   bool linear_curve_is_same(linear_curve a_line, linear_curve b_line){
     float dot_product = a_line.eigen_vector.dot(b_line.eigen_vector);
-    float cos_theta = dot_product / (a_line.eigen_vector.norm() * b_line.eigen_vector.norm());
+    float cos_theta = abs(dot_product / (a_line.eigen_vector.norm() * b_line.eigen_vector.norm()));
 
     // RCLCPP_INFO(this->get_logger(), "cos_theta: %f",cos_theta);
 
@@ -577,15 +587,10 @@ private:
     return false;
   }
 
-  std::pair<float, float> indexToPosition(int index, int width, int height, float resolution, float origin_x, float origin_y, float padding_size)
-   {
-    int x_index = index % width;
-    int y_index = index / width;
-
-    float x_position = origin_x + ((x_index - width * (padding_size - 1.0) / padding_size / 2.0) * resolution);
-    float y_position = origin_y + ((y_index - height * (padding_size - 1.0) / padding_size / 2.0) * resolution);
-
-    return {x_position, y_position};
+  unsigned int positionToIndex(float x, float y, float resolution, float origin_x, float origin_y, int width) {
+    int grid_x = static_cast<int>((x - origin_x) / resolution);
+    int grid_y = static_cast<int>((y - origin_y) / resolution);
+    return grid_x + grid_y * width;
   }
 
   void saveOccupancyGridAsYAML(const nav_msgs::msg::OccupancyGrid& grid, const std::string& map_filename, const std::string& yaml_filename) {
@@ -603,8 +608,8 @@ private:
     std::ofstream out(filename, std::ios::binary);
     out << "P5\n" << grid.info.width << " " << grid.info.height << "\n255\n";
 
-    for (int y = 0; y < grid.info.height; y++) {
-      for (int x = 0; x < grid.info.width; x++) {
+    for (unsigned int y = 0; y < grid.info.height; y++) {
+      for (unsigned int x = 0; x < grid.info.width; x++) {
         int index = x + y * grid.info.width;
         // ROS 2 OccupancyGrid에서 0은 자유, 100은 점유, -1(255로 표현)은 알 수 없음을 의미합니다.
         unsigned char value = (grid.data[index] == 0) ? 255 : (grid.data[index] == 100) ? 0 : 205;
@@ -675,9 +680,9 @@ private:
                          pcl::PointCloud<pcl::PointXYZI>::Ptr pointsToRemove, 
                          double threshold) {
   
-  for (auto& point : *pointsToRemove) {
-    RCLCPP_INFO(this->get_logger(),"points: %f,%f,%f", point.x, point.y, point.z);
-  }
+  // for (auto& point : *pointsToRemove) {
+    // RCLCPP_INFO(this->get_logger(),"points: %f,%f,%f", point.x, point.y, point.z);
+  // }
   pcl::PointCloud<pcl::PointXYZ>::iterator it = originalCloud->begin();
     while (it != originalCloud->end()) {
       bool closePointFound = false;
@@ -702,20 +707,24 @@ private:
     }
   }
 
-  pcl::PointCloud<pcl::PointXYZI>::Ptr find_grid(pcl::PointCloud<pcl::PointXYZI>::Ptr cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr tree_points) {
+  pcl::PointCloud<pcl::PointXYZI>::Ptr find_grid(pcl::PointCloud<pcl::PointXYZI>::Ptr cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr tree_points, pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud) {
     int max_val = INT_MIN;
     int max_id = 0;
 
+    if (cloudsById.empty()) {
+      return 0;
+    }
     //가장 많은 포인트를 가진 클러스터링 그룹 선택
     for (const auto& pair : cloudsById) {
       int id = pair.first; 
       auto& cloud_ = pair.second;
-      RCLCPP_INFO(this->get_logger(),"point_counts: %ld",cloud_ -> size());
+      // RCLCPP_INFO(this->get_logger(),"point_counts: %ld",cloud_ -> size());
       if (cloud_ -> size() > max_val) {
         max_id = id;
       }
-    }
+    } 
 
+    // RCLCPP_INFO(this->get_logger(), "a");
     //가장 많이 투표를 받은 그룹에 대한 PCA를 진행, 그 방향에 직각인 방향도 구함
     linear_curve most_voted_curve = pca_fitting_linear_curve(cloudsById[max_id]);
     linear_curve orthogonal_curve;
@@ -723,8 +732,9 @@ private:
     orthogonal_curve.eigen_vector[1] = most_voted_curve.eigen_vector[0];
     orthogonal_curve.eigen_vector[2] = 0.0;
 
-    RCLCPP_INFO(this->get_logger(), "most_voted: %f, orthogonal: %f", (most_voted_curve.eigen_vector[1] / most_voted_curve.eigen_vector[0]), 
-                                                                      (orthogonal_curve.eigen_vector[1] / orthogonal_curve.eigen_vector[0]));
+    // RCLCPP_INFO(this->get_logger(), "b");
+    // RCLCPP_INFO(this->get_logger(), "most_voted: %f, orthogonal: %f", (most_voted_curve.eigen_vector[1] / most_voted_curve.eigen_vector[0]), 
+    //                                                                   (orthogonal_curve.eigen_vector[1] / orthogonal_curve.eigen_vector[0]));
     
     pcl::PointXYZ coordinate_origin_min = {FLT_MAX, FLT_MAX, 0.0};
     pcl::PointXYZ coordinate_origin_max = {-FLT_MAX, -FLT_MAX, 0.0};
@@ -792,14 +802,15 @@ private:
       int cloudId = curve_pair.first;  // 클라우드 ID
       const linear_curve& curve = curve_pair.second;
 
-      RCLCPP_INFO(this->get_logger(), "Curve ID: %d, eigen_vector: %f, %f, %f", cloudId, curve.eigen_vector[0], curve.eigen_vector[1], curve.eigen_vector[2]);
+      // RCLCPP_INFO(this->get_logger(), "Curve ID: %d, eigen_vector: %f, %f, %f", cloudId, curve.eigen_vector[0], curve.eigen_vector[1], curve.eigen_vector[2]);
+      // RCLCPP_INFO(this->get_logger(), "Curve point:%f, %f, %f", curve.point.x, curve.point.y, curve.point.z);
 
       float dot_product = curve.eigen_vector.dot(most_voted_curve.eigen_vector);
-      float cos_theta = dot_product / (curve.eigen_vector.norm() * most_voted_curve.eigen_vector.norm());
+      float cos_theta = abs(dot_product / (curve.eigen_vector.norm() * most_voted_curve.eigen_vector.norm()));
       if (cos_theta < cos_theta_threshold) {
         if (cos_theta < cos_theta_threshold/4) {
           if (cloudsById.find(cloudId) != cloudsById.end()) {
-            RCLCPP_INFO(this->get_logger(), "cos_thetaeaeeae: %f", cos_theta);
+            // RCLCPP_INFO(this->get_logger(), "cos_thetaeaeeae: %f", cos_theta);
             auto& cloud_ = cloudsById[cloudId];
             double threshold = 0.01;  // 가까운 포인트를 정의하는 임계값
             removeClosePoints(tree_points, cloud_, threshold);
@@ -827,6 +838,8 @@ private:
       }
     }
 
+    save_pcd(tree_points);
+
     std::vector<linear_curve> lines = {finding_coordinate_curve_min, finding_coordinate_curve_max, finding_coordinate_curve_min_opposite, finding_coordinate_curve_max_opposite};
     std::vector<pcl::PointXYZ> intersections;
 
@@ -850,47 +863,63 @@ private:
         return a.x < b.x || (a.x == b.x && a.y < b.y);
       });
 
-    RCLCPP_INFO(this->get_logger(), "1st point:%f, %f, %f", intersections[0].x, intersections[0].y, intersections[0].z);
-    RCLCPP_INFO(this->get_logger(), "2st point:%f, %f, %f", intersections[1].x, intersections[1].y, intersections[1].z);
-    RCLCPP_INFO(this->get_logger(), "3st point:%f, %f, %f", intersections[2].x, intersections[2].y, intersections[2].z);
-    RCLCPP_INFO(this->get_logger(), "4st point:%f, %f, %f", intersections[3].x, intersections[3].y, intersections[3].z);
+    // RCLCPP_INFO(this->get_logger(), "1st point:%f, %f, %f", intersections[0].x, intersections[0].y, intersections[0].z);
+    // RCLCPP_INFO(this->get_logger(), "2st point:%f, %f, %f", intersections[1].x, intersections[1].y, intersections[1].z);
+    // RCLCPP_INFO(this->get_logger(), "3st point:%f, %f, %f", intersections[2].x, intersections[2].y, intersections[2].z);
+    // RCLCPP_INFO(this->get_logger(), "4st point:%f, %f, %f", intersections[3].x, intersections[3].y, intersections[3].z);
 
+    //real
+    // coordinate_origin_min = intersections[0]; //(x1, y1)
+    // coordinate_origin_max = intersections[3]; // (x2, y2)
+    // coordinate_origin_min_ = intersections[2]; // x좌표가 증가한 위치 (x2, y1)
+    // coordinate_origin_max_ = intersections[1]; // y좌표가 증가한 위치 (x1, y2)
+
+    //sim
     coordinate_origin_min = intersections[0]; //(x1, y1)
-    coordinate_origin_max = intersections[3]; // (x2, y2)
-    coordinate_origin_min_ = intersections[2]; // x좌표가 증가한 위치 (x2, y1)
-    coordinate_origin_max_ = intersections[1]; // y좌표가 증가한 위치 (x1, y2)
+    coordinate_origin_max = intersections[3]; // (x1, y2)
+    coordinate_origin_min_ = intersections[2]; // (x2, y1)
+    coordinate_origin_max_ = intersections[1]; // (x2, y2)
 
-    float most_normalize = squaredDistance(coordinate_origin_min_, coordinate_origin_min);
-    float orthogonal_normalize = squaredDistance(coordinate_origin_max_, coordinate_origin_min);
+    // float most_normalize = squaredDistance(coordinate_origin_min_, coordinate_origin_min);
+    // float orthogonal_normalize = squaredDistance(coordinate_origin_max_, coordinate_origin_min);
 
-    most_voted_curve.eigen_vector[0] = (coordinate_origin_min_.x - coordinate_origin_min.x) / most_normalize;
-    most_voted_curve.eigen_vector[1] = (coordinate_origin_min_.y - coordinate_origin_min.y) / most_normalize;
-    most_voted_curve.eigen_vector[2] = (coordinate_origin_min_.z - coordinate_origin_min.z) / most_normalize;
+    // most_voted_curve.eigen_vector[0] = (coordinate_origin_min_.x - coordinate_origin_min.x) / most_normalize;
+    // most_voted_curve.eigen_vector[1] = (coordinate_origin_min_.y - coordinate_origin_min.y) / most_normalize;
+    // most_voted_curve.eigen_vector[2] = (coordinate_origin_min_.z - coordinate_origin_min.z) / most_normalize;
 
-    orthogonal_curve.eigen_vector[0] = (coordinate_origin_max_.x - coordinate_origin_min.x) / orthogonal_normalize;
-    orthogonal_curve.eigen_vector[1] = (coordinate_origin_max_.y - coordinate_origin_min.y) / orthogonal_normalize;
-    orthogonal_curve.eigen_vector[2] = (coordinate_origin_max_.z - coordinate_origin_min.z) / orthogonal_normalize;
+    // orthogonal_curve.eigen_vector[0] = (coordinate_origin_max_.x - coordinate_origin_min.x) / orthogonal_normalize;
+    // orthogonal_curve.eigen_vector[1] = (coordinate_origin_max_.y - coordinate_origin_min.y) / orthogonal_normalize;
+    // orthogonal_curve.eigen_vector[2] = (coordinate_origin_max_.z - coordinate_origin_min.z) / orthogonal_normalize;
+
+    // RCLCPP_INFO(this->get_logger(), "most_voted: %f, orthogonal: %f", (most_voted_curve.eigen_vector[1] / most_voted_curve.eigen_vector[0]), 
+    //                                                                   (orthogonal_curve.eigen_vector[1] / orthogonal_curve.eigen_vector[0]));
 
     //최대 투표를 받은 커브에 대해서 해당 커브와 같은 벡터를 가진다고 판단이 되면 id 그룹에 추가해서 해당 선이 맞는 선으로 판단한다.
     std::vector<long unsigned int> rank_id;
     std::vector<float> rank_y_dist;
 
     int cnt = 0;
+
+    // RCLCPP_INFO(this->get_logger(), "curves_count: %d", curves.size());
     for (const auto& curve_pair : curves) {
       int cloudId = curve_pair.first;  // 클라우드 ID
       const linear_curve& curve = curve_pair.second;
 
       float dot_product = curve.eigen_vector.dot(most_voted_curve.eigen_vector);
-      float cos_theta = dot_product / (curve.eigen_vector.norm() * most_voted_curve.eigen_vector.norm());
+      float cos_theta = abs(dot_product / (curve.eigen_vector.norm() * most_voted_curve.eigen_vector.norm()));
+      // RCLCPP_INFO(this->get_logger(), "cos_theta: %f", cos_theta);
+      // RCLCPP_INFO(this->get_logger(), "theta: %f", std::acos(cos_theta) * 180 / M_PI);
       if (cos_theta < cos_theta_threshold) {
+        
         continue;
       }
       // Eigen::Vector3f A2B(curves[i].point.x - finding_coordinate_curve_min.point.x, curves[i].point.y - finding_coordinate_curve_min.point.y, curves[i].point.z - finding_coordinate_curve_min.point.z);
+      // Eigen::Vector3f A2B(curve.point.x - (coordinate_origin_min.x + coordinate_origin_min_.x) / 2.0, curve.point.y - (coordinate_origin_min.y + coordinate_origin_min_.y) / 2.0, 0);
       Eigen::Vector3f A2B(curve.point.x - (coordinate_origin_min.x + coordinate_origin_min_.x) / 2.0, curve.point.y - (coordinate_origin_min.y + coordinate_origin_min_.y) / 2.0, 0);
       Eigen::Vector3f crossProduct = A2B.cross(most_voted_curve.eigen_vector);
 
       float dist_between_dot2line = crossProduct.norm() / most_voted_curve.eigen_vector.norm();
-      RCLCPP_INFO(this->get_logger(), "dist: %f", dist_between_dot2line);
+      // RCLCPP_INFO(this->get_logger(), "dist: %f", dist_between_dot2line);
 
       rank_id.push_back(cnt);
       rank_y_dist.push_back(dist_between_dot2line);
@@ -907,9 +936,9 @@ private:
       return a.second < b.second;
     }); 
 
-    for (const auto& pair : combined_key) {
-      RCLCPP_INFO(this->get_logger(), "ID: %lu, Distance: %f", pair.first, pair.second);
-    }
+    // for (const auto& pair : combined_key) {
+      // RCLCPP_INFO(this->get_logger(), "ID: %lu, Distance: %f", pair.first, pair.second);
+    // }
 
     //새로운 커브를 형성한다. 이 커브들은 각 줄의 기준이 될 커브들이다.
     std::vector<linear_curve> new_curve_on_grid;
@@ -928,7 +957,7 @@ private:
       line.eigen_vector = most_voted_curve.eigen_vector;
       line.point = moveInDirection(first_center, orthogonal_curve.eigen_vector, pair.second);
 
-      RCLCPP_INFO(this->get_logger(), "point: %f,%f,%f", line.point.x, line.point.y, line.point.z);
+      // RCLCPP_INFO(this->get_logger(), "point: %f,%f,%f", line.point.x, line.point.y, line.point.z);
 
       if ((squaredDistance(last_line.point, line.point) < (dist_between_line))) {
         if(first_flag) {
@@ -942,6 +971,8 @@ private:
       new_curve_on_grid.push_back(line);
     }
 
+    // RCLCPP_INFO(this->get_logger(), "new_curve_on_grid: %d", new_curve_on_grid.size());
+
     cloudsById_grid = std::unordered_map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr>();
     pcl::PointCloud<pcl::PointXYZI>::Ptr grid_points(new pcl::PointCloud<pcl::PointXYZI>);
     for (auto& point : *tree_points) {
@@ -951,7 +982,7 @@ private:
         Eigen::Vector3f crossProduct = A2B.cross(new_curve_on_grid[i].eigen_vector);
 
         float dist_between_dot2line = crossProduct.norm() / new_curve_on_grid[i].eigen_vector.norm();
-
+        
         if (min_dist > dist_between_dot2line) {
           min_dist = dist_between_dot2line;
           if (min_dist < linear_distribution_on_line) {
@@ -992,7 +1023,9 @@ private:
     float distance = squaredDistance(coordinate_origin_min, coordinate_origin_min_);
     int pts_cnt = distance / grid_resolution;
 
-    point_interpolation_merged.reset(new pcl::PointCloud<pcl::PointXYZ>);
+    // RCLCPP_INFO(this->get_logger(), "distance: %f,pts_cnt: %d", distance, pts_cnt);
+
+    point_interpolation_merged.reset(new pcl::PointCloud<pcl::PointXYZI>);
     pcl::PointXYZ last_pt = coordinate_origin_min;
     for (int i = 0; i < pts_cnt; i++) {
       pcl::PointXYZ pt = moveInDirection(last_pt, most_voted_curve.eigen_vector, grid_resolution);
@@ -1000,10 +1033,14 @@ private:
       last_pt = pt;
     }
 
-    for (auto dist : rank_y_dist) {
+    cnt = 0;
+    for (const auto& pair : combined_key) {
+      // RCLCPP_INFO(this->get_logger(), "rank_y_dist: %f", pair.second);
       for (auto pt : *point_interpolated) {
-        pcl::PointXYZ y_pt = moveInDirection(pt, orthogonal_curve.eigen_vector, dist);
-        point_interpolation_merged -> push_back(y_pt);
+        pcl::PointXYZ y_pt = moveInDirection(pt, orthogonal_curve.eigen_vector, pair.second);
+        pcl::PointXYZI y_pt_i(y_pt.x, y_pt.y, y_pt.z, cnt);
+        cnt++;
+        point_interpolation_merged -> push_back(y_pt_i);
       }
     }
     // for (auto curve : new_curve_on_grid) {
@@ -1021,16 +1058,16 @@ private:
     //   }
     // }
 
-    float width = std::abs(coordinate_origin_min.x - coordinate_origin_min_.x);
-    float height = std::abs(coordinate_origin_min.y - coordinate_origin_max_.y);
+    float width = 150.0;
+    float height = 150.0;
 
-    float padding_size = 2.0; // large than 1.0
+    float padding_size = 1.0; // large than 1.0
 
     grid_2d.info.resolution = grid_resolution;  // 각 셀의 크기 (미터 단위)
     grid_2d.info.width = static_cast<int>(width / grid_resolution * padding_size);     // 맵의 너비 (셀의 수)
     grid_2d.info.height = static_cast<int>(height / grid_resolution * padding_size);      // 맵의 높이 (셀의 수)
-    grid_2d.info.origin.position.x = coordinate_origin_min.x;  // 맵 원점의 x 좌표
-    grid_2d.info.origin.position.y = coordinate_origin_min.y;  // 맵 원점의 y 좌표
+    grid_2d.info.origin.position.x = -width / 2.0;  // 맵 원점의 x 좌표
+    grid_2d.info.origin.position.y = -height / 2.0;  // 맵 원점의 y 좌표
     grid_2d.info.origin.position.z = 0.0;  // 맵 원점의 z 좌표
     grid_2d.info.origin.orientation.w = 1.0;
 
@@ -1038,20 +1075,41 @@ private:
     // RCLCPP_INFO(this->get_logger(), "width: %d, height: %d", grid_2d.info.width, grid_2d.info.height);
     // RCLCPP_INFO(this->get_logger(), "origin.position.x: %f, origin.position.y: %f", grid_2d.info.origin.position.x, grid_2d.info.origin.position.y);
 
+    pcl::PointCloud<pcl::PointXYZ>::Ptr point_interpolation_merged_xyz(new pcl::PointCloud<pcl::PointXYZ>());
+    point_interpolation_merged_xyz->points.resize(point_interpolation_merged->points.size());
+
+    for (size_t i = 0; i < point_interpolation_merged->points.size(); ++i) {
+      point_interpolation_merged_xyz->points[i].x = point_interpolation_merged->points[i].x;
+      point_interpolation_merged_xyz->points[i].y = point_interpolation_merged->points[i].y;
+      point_interpolation_merged_xyz->points[i].z = point_interpolation_merged->points[i].z;
+    }
+
     pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
-    kdtree.setInputCloud(point_interpolation_merged);
+    // kdtree.setInputCloud(point_interpolation_merged);
+    *point_interpolation_merged_xyz += *tree_points;
+    kdtree.setInputCloud(point_interpolation_merged_xyz);
 
     grid_2d.data.resize(grid_2d.info.width * grid_2d.info.height);  // 데이터 배열 크기 설정
-    for (unsigned int y = 0; y < grid_2d.info.height; ++y) {
-      for (unsigned int x = 0; x < grid_2d.info.width; ++x) {
-        unsigned int index = x + y * grid_2d.info.width;
-        std::pair<float, float> point_position = indexToPosition(index, grid_2d.info.width, grid_2d.info.height, grid_2d.info.resolution, grid_2d.info.origin.position.x, grid_2d.info.origin.position.y, padding_size);
-        pcl::PointXYZ searchPoint(point_position.first, point_position.second, 0.0);
+    int grid_spread = static_cast<int>(occupancy_spread / grid_2d.info.resolution);
 
-        std::vector<int> pointIdxNKNSearch(1);
-        std::vector<float> pointNKNSquaredDistance(1);
-        if (kdtree.nearestKSearch(searchPoint, 1, pointIdxNKNSearch, pointNKNSquaredDistance) > 0) {
-          grid_2d.data[index] = (pointNKNSquaredDistance[0] < occupancy_spread)  ? 100 : 0;  // 조건에 따라 셀 상태 설정
+    for (auto& point : *point_interpolation_merged_xyz) {
+      int centerX = static_cast<int>((point.x - grid_2d.info.origin.position.x) / grid_2d.info.resolution);
+      int centerY = static_cast<int>((point.y - grid_2d.info.origin.position.y) / grid_2d.info.resolution);
+      unsigned int centerIndex = positionToIndex(point.x, point.y, grid_2d.info.resolution, grid_2d.info.origin.position.x, grid_2d.info.origin.position.y, grid_2d.info.width);
+
+      grid_2d.data[centerIndex] = 100;  // 중앙 포인트 설정
+      
+      for (int y = -grid_spread; y <= grid_spread; y++) {
+        for (int x = -grid_spread; x <= grid_spread; x++) {
+          if (x * x + y * y <= grid_spread * grid_spread) {  // 원형 패턴 확인
+            unsigned int newX = centerX + x;
+            unsigned int newY = centerY + y;
+
+            if (newX >= 0 && newX < grid_2d.info.width && newY >= 0 && newY < grid_2d.info.height) {
+              unsigned int index = newX + newY * grid_2d.info.width;
+              grid_2d.data[index] = 100;  // 장애물로 설정
+            }
+          }
         }
       }
     }
@@ -1093,7 +1151,7 @@ private:
   std::unordered_map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudsById_grid;
   nav_msgs::msg::OccupancyGrid grid_2d;
 
-  pcl::PointCloud<pcl::PointXYZ>::Ptr point_interpolation_merged;
+  pcl::PointCloud<pcl::PointXYZI>::Ptr point_interpolation_merged;
 };
 
 int main(int argc, char *argv[]) {
