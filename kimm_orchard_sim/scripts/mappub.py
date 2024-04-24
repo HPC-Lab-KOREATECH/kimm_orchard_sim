@@ -21,7 +21,7 @@ class EmptyGridMapPublisher(Node):
         self.publisher_ = self.create_publisher(OccupancyGrid, 'map', qos_profile)
         self.publisher_local = self.create_publisher(OccupancyGrid, '/local_costmap/local_costmap/costmap_raw', qos_profile)
         self.publisher_metadata = self.create_publisher(MapMetaData, '/map/metadata', qos_profile)
-        self.map_info, self.map_data, self.width, self.height = self.load_map('/root/ros2_ws/src/kimm_orchard_sim/pcd_cal/maps/map.yaml')
+        self.map_info, self.map_data, self.width, self.height = self.load_map('/root/ros2_ws/src/kimm_orchard_sim/pcd_cal/maps/map123.yaml')
         
         # 'reliable'와 'transient local' QoS 설정으로 /clock 구독
         self.clock_subscriber = self.create_subscription(Clock, '/clock', self.clock_callback, qos_profile)

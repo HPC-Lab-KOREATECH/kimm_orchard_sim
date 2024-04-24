@@ -915,7 +915,7 @@ private:
       }
       // Eigen::Vector3f A2B(curves[i].point.x - finding_coordinate_curve_min.point.x, curves[i].point.y - finding_coordinate_curve_min.point.y, curves[i].point.z - finding_coordinate_curve_min.point.z);
       // Eigen::Vector3f A2B(curve.point.x - (coordinate_origin_min.x + coordinate_origin_min_.x) / 2.0, curve.point.y - (coordinate_origin_min.y + coordinate_origin_min_.y) / 2.0, 0);
-      Eigen::Vector3f A2B(curve.point.x - (coordinate_origin_min.x + coordinate_origin_min_.x) / 2.0, curve.point.y - (coordinate_origin_min.y + coordinate_origin_min_.y) / 2.0, 0);
+      Eigen::Vector3f A2B(curve.point.x - (coordinate_origin_min.x + coordinate_origin_max_.x) / 2.0, curve.point.y - (coordinate_origin_min.y + coordinate_origin_max_.y) / 2.0, 0);
       Eigen::Vector3f crossProduct = A2B.cross(most_voted_curve.eigen_vector);
 
       float dist_between_dot2line = crossProduct.norm() / most_voted_curve.eigen_vector.norm();
@@ -945,8 +945,8 @@ private:
     linear_curve last_line;
 
     pcl::PointXYZ first_center;
-    first_center.x = (coordinate_origin_min.x + coordinate_origin_min_.x) / 2;
-    first_center.y = (coordinate_origin_min.y + coordinate_origin_min_.y) / 2;
+    first_center.x = (coordinate_origin_min.x + coordinate_origin_max_.x) / 2;
+    first_center.y = (coordinate_origin_min.y + coordinate_origin_max_.y) / 2;
     first_center.z = 0;
 
     last_line.point = first_center;
@@ -1020,7 +1020,7 @@ private:
     }
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr point_interpolated(new pcl::PointCloud<pcl::PointXYZ>);
-    float distance = squaredDistance(coordinate_origin_min, coordinate_origin_min_);
+    float distance = squaredDistance(coordinate_origin_min, coordinate_origin_max_);
     int pts_cnt = distance / grid_resolution;
 
     // RCLCPP_INFO(this->get_logger(), "distance: %f,pts_cnt: %d", distance, pts_cnt);

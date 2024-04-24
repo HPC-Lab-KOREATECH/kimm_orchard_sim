@@ -35,5 +35,5 @@ def plot_pgm(pgm_path):
     plt.show()
 
 # 파일 경로를 지정해주세요 (예: 'path/to/image.pgm')
-plot_pgm('map.pgm')
+plot_pgm('map123.pgm')
 
