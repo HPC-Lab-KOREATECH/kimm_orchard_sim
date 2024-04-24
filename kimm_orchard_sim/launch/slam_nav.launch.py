@@ -45,7 +45,8 @@ def generate_launch_description():
     two_d_lidar_enabled = LaunchConfiguration("two_d_lidar_enabled", default=True)
     odometry_source = LaunchConfiguration("odometry_source", default="world")
     robot_namespace = LaunchConfiguration("robot_namespace", default='')
-    world_file = LaunchConfiguration("world_file", default = join(kimm_orchard_sim_path, 'worlds', 'wall.sdf'))
+    # world_file = LaunchConfiguration("world_file", default = join(kimm_orchard_sim_path, 'worlds', 'wall.sdf'))
+    world_file = LaunchConfiguration("world_file", default = join(kimm_orchard_sim_path, 'worlds', 'apple_world.sdf'))
     #world_file = LaunchConfiguration("world_file", default = join(bcr_bot_path, 'worlds', 'small_warehouse.sdf'))
 
     # Path to the YAML file

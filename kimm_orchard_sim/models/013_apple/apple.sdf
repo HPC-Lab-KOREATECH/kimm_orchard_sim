@@ -3,39 +3,39 @@
   <model name="apple">
     <static>false</static>
     <link name="link">
-      <inertial>       
-        <pose>0.0013105802251075094 -0.003861242636253375 0.03633673271131293 1.2865880165812258 -0.49579231968013254 -1.5779571819367095</pose> 
-        <mass>0.0002465953911687125</mass>
-        <inertia>
-          <ixx>1.5346617709147597e-07</ixx>
+      <inertial>
+        <pose>0 0 0.04 0 0 0</pose> <!-- 중심을 (0, 0, 0)에 위치시키기 -->
+        <mass>0.00000000001</mass> <!-- 질량 설정 -->
+        <inertia> <!-- 관성 모멘트 -->
+          <ixx>0.0001</ixx>
           <ixy>0.0</ixy>
-          <ixz>-3.308722450212111e-24</ixz>
-          <iyy>1.5237248423959713e-07</iyy>
+          <ixz>0.0</ixz>
+          <iyy>0.0001</iyy>
           <iyz>0.0</iyz>
-          <izz>1.5058285191115324e-07</izz>
+          <izz>0.0001</izz>
         </inertia>
       </inertial>
       <collision name="collision">
+      <pose>0 0 0.04 0 0 0</pose>
         <geometry>
-          <mesh>
-            <!-- Use a downsampled mesh for collisions -->
-            <uri>model://013_apple/google_16k/textured.obj</uri>
-	        </mesh>
+          <sphere>
+            <radius>0.04</radius>
+          </sphere>
         </geometry>
         <surface>
-        <!--<friction>
+        <friction>
           <ode>
-            <mu>0.8</mu>
-            <mu2>0.6</mu2>
+            <mu>8000000.0</mu>
+            <mu2>8000000.0</mu2>
           </ode>
-        </friction>-->
+        </friction>
       </surface>
       </collision>
       <visual name="visual">
         <geometry>
           <mesh>
             <uri>model://013_apple/google_16k/textured.obj</uri>
-	        </mesh>
+          </mesh>
         </geometry>
         <material>
           <script>
