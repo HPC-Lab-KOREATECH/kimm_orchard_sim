@@ -9,12 +9,6 @@ kimm_orchard_sim (2023)
 # Dependencies
 
 ```bash
-rosdep update
-
-cd ~/ros2_ws
-
-rosdep install --from-paths src --ignore-src -r -y
-
 sudo add-apt-repository ppa:borglab/gtsam-release-4.1 && \
 sudo apt-get update && \
 sudo apt-get upgrade -y && \
@@ -36,7 +30,20 @@ sudo apt-get install -y \
     ros-humble-pcl-msgs \
     ros-humble-vision-opencv \
     ros-humble-xacro \
-    ros-humble-pcl-conversions \
+    ros-humble-tf2-eigen \
+    ros-humble-diagnostic-updater \
+    ros-humble-geographic-msgs \
+    google-mock \
+    libboost-all-dev \
+    libeigen3-dev \
+    libgflags-dev \
+    libgoogle-glog-dev \
+    liblua5.2-dev \
+    libprotobuf-dev \
+    libsuitesparse-dev \
+    libwebp-dev \
+    ninja-build \
+    protobuf-compiler \
     python3-pip \
     terminator \
     gedit \
@@ -47,15 +54,18 @@ sudo apt-get install -y \
     libglu1-mesa-dev \
     freeglut3-dev \
     libglew-dev \
-    libglfw3-dev && \
-    ros-humble-geographic-msgs \
-    libgeographic-dev 
+    libglfw3-dev
 
 pip install transforms3d utm && \
 sudo apt-get autoremove -y && \
 sudo apt-get clean && \
 sudo rm -rf /var/lib/apt/lists/* && \
 pip install -U colcon-common-extensions
+
+cd ~/ros2_ws
+
+rosdep update
+rosdep install -i --from-paths src --ignore-src --rosdistro humble -y --skip-keys pcl_1.10 --skip-keys Eigen --skip-keys GTSAM --skip-keys PCL --skip-keys OpenCV
 ```
 
 # First setup
@@ -68,11 +78,21 @@ xacro orchard_geometry.urdf.xacro  > orchard_geometry.urdf
 cd ~/ros2_ws && colcon build --symlink-install
 ```
 
-# Docker setup
+# With Docker
 
 ```bash
 cd ~/ros2_ws/src/docker
 ./run_command.sh
+
+#in docker
+cd ~/ros2_ws
+mkdir src && cd src
+git clone <package>
+cd ..
+
+./rosdep_install.sh
+
+colcon build --symlink-install
 ```
 
 # gazebo simulation 실행
@@ -105,4 +125,15 @@ ros2 run control car_control
 
 ```bash
 ros2 launch lio_sam run.launch.py
+```
+
+# Navigation
+
+This is for navigating in orchard with simulation
+You should need previous map_file
+```bash
+ros2 launch kimm_orchard_sim slam_nav.launch.py
+ros2 launch lio_sam run_loc.launch.py
+ros2 launch nav2_bringup navigation_launch.py use_sim_time:=True
+ros2 run control car_control
 ```

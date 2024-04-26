@@ -124,7 +124,7 @@ class GNSSOdom : public ParamServer {
 
   void readFile(){
     float initial_lla[3];
-    std::ifstream initial_info("/root/map/initial_LLA_orientation");
+    std::ifstream initial_info(map_dir+"initial_LLA_orientation");
     if (!initial_info.is_open()) {
         std::cerr << "Failed to open file." << std::endl;
         exit(1);

@@ -1,4 +1,4 @@
-FROM althack/ros2:humble-cuda-gazebo-nvidia-2023-11-05
+FROM althack/ros2:humble-cuda-gazebo-nvidia-2024-04-08
 
 #nvidia-container-runtime 
 ENV NVIDIA_VISIBLE_DEVICES \
@@ -33,9 +33,6 @@ EXPOSE 11345
 # Setup ROS 2 dependencies
 ARG ROS_DISTRO=humble
 
-# Prevent console from interacting with the user
-ARG DEBIAN_FRONTEND=noninteractive
-
 # Prevent hash mismatch error for apt-get update
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* && apt-get update -yqqq
 
@@ -47,14 +44,18 @@ ENV XDG_RUNTIME_DIR='/tmp/runtime-root'
 RUN apt-get install --no-install-recommends -yqqq \
     python3-pip
 
-# Copy and run install.sh
-COPY install.sh /tmp/install.sh
-RUN chmod +x /tmp/install.sh
+COPY CycloneDDS root/CycloneDDS
+COPY map_file root/map_file
+COPY pointcloud_to_2dmap root/pointcloud_to_2dmap
 
 # Set up ROS 2 workspace
 ARG WORKSPACE=/root/ros2_ws
 ENV WORKSPACE=$WORKSPACE
 WORKDIR $WORKSPACE
+
+# Copy and run install.sh
+COPY rosdep_install.sh /root/ros2_ws/rosdep_install.sh
+RUN chmod +x /root/ros2_ws/rosdep_install.sh
 
 # Install ROS 2 packages and dependencies
 RUN add-apt-repository ppa:borglab/gtsam-release-4.1 && \
@@ -78,6 +79,20 @@ RUN add-apt-repository ppa:borglab/gtsam-release-4.1 && \
         ros-humble-pcl-msgs \
         ros-humble-vision-opencv \
         ros-humble-xacro \
+        ros-humble-tf2-eigen \
+        ros-humble-diagnostic-updater \
+        ros-humble-geographic-msgs \
+        google-mock \
+        libboost-all-dev \
+        libeigen3-dev \
+        libgflags-dev \
+        libgoogle-glog-dev \
+        liblua5.2-dev \
+        libprotobuf-dev \
+        libsuitesparse-dev \
+        libwebp-dev \
+        ninja-build \
+        protobuf-compiler \
         python3-pip \
         terminator \
         gedit \
@@ -96,15 +111,12 @@ RUN add-apt-repository ppa:borglab/gtsam-release-4.1 && \
     pip install -U colcon-common-extensions
 
 # Set ROS2 environment variables in /root/.bashrc
-RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc && \
-    echo "export ROS_DOMAIN_ID=34" >> /root/.bashrc && \
-    echo "export ROS_LOCALHOST_ONLY=1" >> /root/.bashrc && \
-    echo "echo 'ROS2 environment set, Domain = 34'" >> /root/.bashrc
+RUN echo "echo 'ROS2 environment set, Domain = 34'" >> /root/.bashrc && \
+    echo "export PATH=/usr/local/cuda-11.8/bin${PATH:+:${PATH}}" >> /root/.bashrc && \
+    echo "export LD_LIBRARY_PATH=/usr/local/cuda-11.8/lib64{LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}" >> /root/.bashrc
 
 # Set ROS2 Humble and ROS aliases in /root/.bashrc
-RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc && \
-    echo "source ~/ros2_ws/install/local_setup.bash" >> /root/.bashrc && \
-    echo "alias cw='cd ~/ros2_ws'" >> /root/.bashrc && \
+RUN echo "alias cw='cd ~/ros2_ws'" >> /root/.bashrc && \
     echo "alias cs='cd ~/ros2_ws/src'" >> /root/.bashrc && \
     echo "alias cb='cd ~/ros2_ws && colcon build --symlink-install'" >> /root/.bashrc && \
     echo "alias cbp='cd ~/ros2_ws && colcon build --symlink-install --packages-select'" >> /root/.bashrc && \
@@ -114,6 +126,12 @@ RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc && \
     echo "alias re='ros2 topic echo'" >> /root/.bashrc && \
     echo "alias rn='ros2 node list'" >> /root/.bashrc && \
     echo "alias testpub='ros2 run demo_nodes_cpp talker'" >> /root/.bashrc && \
-    echo "alias testsub='ros2 run demo_nodes_cpp listener'" >> /root/.bashrc
-
+    echo "alias testsub='ros2 run demo_nodes_cpp listener'" >> /root/.bashrc && \
+    echo "alias killgz='killall -9 gzserver'" >> /root/.bashrc && \
+    echo "#export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp" >> /root/.bashrc && \
+    echo "#export CYCLONEDDS_URI="file://$HOME/CycloneDDS/conf.xml"" >> /root/.bashrc && \
+    echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc && \
+    echo "export ROS_DOMAIN_ID=34" >> /root/.bashrc && \
+    echo "export ROS_LOCALHOST_ONLY=1" >> /root/.bashrc && \
+    echo "source ~/ros2_ws/install/local_setup.bash" >> /root/.bashrc
 CMD ["gzserver", "my-gazebo-app-args"]
