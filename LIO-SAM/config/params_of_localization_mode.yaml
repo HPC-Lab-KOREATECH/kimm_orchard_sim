@@ -10,7 +10,7 @@
 
     # Localization Option
     doMapping : false
-    map_dir : "/root/map/"
+    map_dir : "/root/map_file/real_world_map/gps_aligned/"
     gpsNaiveTopic : "/gps/fix"
 
     # don't modify
