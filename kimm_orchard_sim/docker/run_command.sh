@@ -15,5 +15,5 @@ docker run -it \
     --gpus all \
     --ipc=host \
     -P \
-    --name kimm_orchard
+    --name kimm_orchard \
     kimm:v1.0 bash
