@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
-     Commit Version: 1.6.0-4-g7f85cfe  Build Version: 1.6.7995.38578
-     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
+
 <robot
   name="ranger_mini_v2" xmlns:xacro="http://ros.org/wiki/xacro">
 
@@ -581,6 +579,12 @@
       </actuator>
 	</transmission>
 
+  <gazebo>
+    <plugin filename="libgazebo_ros2_control.so" name="gazebo_ros2_control">
+      <parameters>$(find kimm_orchard_sim)/config/controller.yaml</parameters>
+    </plugin>
+  </gazebo>
+
   <ros2_control name="GazeboSystem" type="system">
       <hardware>
         <plugin>gazebo_ros2_control/GazeboSystem</plugin>
@@ -592,7 +596,9 @@
           <param name="max">3.14</param>
         </command_interface>
         <state_interface name="position"/>
-        <state_interface name="velocity"/>
+        <state_interface name="velocity">
+          <param name="initial_value">0.0</param>
+        </state_interface>
         <state_interface name="effort"/>
       </joint>
 
@@ -602,7 +608,9 @@
           <param name="max">3.14</param>
         </command_interface>
         <state_interface name="position"/>
-        <state_interface name="velocity"/>
+        <state_interface name="velocity">
+          <param name="initial_value">0.0</param>
+        </state_interface>
         <state_interface name="effort"/>
       </joint>
 
@@ -612,7 +620,9 @@
           <param name="max">3.14</param>
         </command_interface>
         <state_interface name="position"/>
-        <state_interface name="velocity"/>
+        <state_interface name="velocity">
+          <param name="initial_value">0.0</param>
+        </state_interface>
         <state_interface name="effort"/>
       </joint>
 
@@ -622,7 +632,9 @@
           <param name="max">3.14</param>
         </command_interface>
         <state_interface name="position"/>
-        <state_interface name="velocity"/>
+        <state_interface name="velocity">
+          <param name="initial_value">0.0</param>
+        </state_interface>
         <state_interface name="effort"/>
       </joint>
 
@@ -631,7 +643,9 @@
           <param name="min">-3.14</param>
           <param name="max">3.14</param>
         </command_interface>
-        <state_interface name="position"/>
+        <state_interface name="position">
+          <param name="initial_value">0.0</param>
+        </state_interface>
         <state_interface name="velocity"/>
         <state_interface name="effort"/>
       </joint>
@@ -641,7 +655,9 @@
           <param name="min">-3.14</param>
           <param name="max">3.14</param>
         </command_interface>
-        <state_interface name="position"/>
+        <state_interface name="position">
+          <param name="initial_value">0.0</param>
+        </state_interface>
         <state_interface name="velocity"/>
         <state_interface name="effort"/>
       </joint>
@@ -651,7 +667,9 @@
           <param name="min">-3.14</param>
           <param name="max">3.14</param>
         </command_interface>
-        <state_interface name="position"/>
+        <state_interface name="position">
+          <param name="initial_value">0.0</param>
+        </state_interface>
         <state_interface name="velocity"/>
         <state_interface name="effort"/>
       </joint>
@@ -661,7 +679,9 @@
           <param name="min">-3.14</param>
           <param name="max">3.14</param>
         </command_interface>
-        <state_interface name="position"/>
+        <state_interface name="position">
+          <param name="initial_value">0.0</param>
+        </state_interface>
         <state_interface name="velocity"/>
         <state_interface name="effort"/>
       </joint>
@@ -674,7 +694,7 @@
   </xacro:macro>
 
   <!-- LIDAR -->
-  <xacro:include filename="$(find kimm_orchard_sim)/urdf/sensors/VLP-32.urdf.xacro"/>
+  <xacro:include filename="$(find kimm_orchard_sim)/urdf/sensors/vlp-32.urdf.xacro"/>
   <xacro:VLP-32 >
     <origin xyz="0 0 0" rpy="-1.57 -1.57 0.0" />
   </xacro:VLP-32> 
@@ -691,10 +711,6 @@
   <xacro:include filename="$(find kimm_orchard_sim)/urdf/sensors/gps.xacro" />
   <xacro:gps />
 
-  <gazebo>
-    <plugin name="gazebo_ros2_control" filename="libgazebo_ros2_control.so">
-      <parameters>$(find kimm_orchard_sim)/config/controller.yaml</parameters>
-    </plugin>
-  </gazebo>
+
 </robot>
 

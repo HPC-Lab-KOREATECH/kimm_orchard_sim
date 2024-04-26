@@ -2,7 +2,17 @@ cmake_minimum_required(VERSION 3.8)
 project(kimm_orchard_sim)
 
 find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
 
+add_executable(goal_flag scripts/goal_pose_flag.cpp)
+
+ament_target_dependencies(goal_flag rclcpp std_msgs nav_msgs)
+
+install(TARGETS
+  goal_flag
+  DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY map config launch meshes models urdf worlds rviz scripts
     DESTINATION share/${PROJECT_NAME}/

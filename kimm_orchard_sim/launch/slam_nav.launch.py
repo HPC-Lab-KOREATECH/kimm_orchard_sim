@@ -2,9 +2,6 @@
 
 import os
 from ament_index_python.packages import get_package_share_directory
-
-#!/usr/bin/env python3
-
 from os.path import join
 import xacro
 from launch.conditions import IfCondition
@@ -74,10 +71,10 @@ def generate_launch_description():
         output='screen',
         parameters=[{"use_sim_time": use_sim_time},
                     {'robot_description': doc.toxml()},
-                    {"yaml_content": yaml_content}],
-        remappings=[
-            ('/joint_states', PythonExpression(['"', robot_namespace, '/joint_states"'])),
-        ]
+                    {"yaml_content": yaml_content}]
+        # remappings=[
+        #     ('/joint_states', PythonExpression(['"', robot_namespace, '/joint_states"'])),
+        # ]
     )
 
     # Launch the spawn_entity node to spawn the robot in Gazebo
