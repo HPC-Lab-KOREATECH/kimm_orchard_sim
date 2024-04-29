@@ -22,12 +22,12 @@ class goal_pose_flag: public rclcpp::Node
     : Node("goal_pose_flag")
     {
         sub_path= this->create_subscription<nav_msgs::msg::Path>(
-        "/Planning/local_path", 10, std::bind(&goal_pose_flag::path_callback, this, std::placeholders::_1));
+        "/plan", 10, std::bind(&goal_pose_flag::path_callback, this, std::placeholders::_1));
 
         sub_local=this->create_subscription<std_msgs::msg::Float64MultiArray>(
         "/Local/utm", 10, std::bind(&goal_pose_flag::local_callback, this, std::placeholders::_1));
 
-        pub_flag = this->create_publisher<std_msgs::msg::Bool>("goal_flag", 10);
+        pub_flag = this->create_publisher<std_msgs::msg::Bool>("/Planning/Control_SW", 10);
         flag_pub=this->create_wall_timer(
         500ms, std::bind(&goal_pose_flag::pub_callback, this));
     }
@@ -35,14 +35,16 @@ class goal_pose_flag: public rclcpp::Node
   private:
     void path_callback(const nav_msgs::msg::Path::SharedPtr msg)
     {
-        this->x_goal_pose=msg->poses[0].pose.position.x;
-        this->y_goal_pose=msg->poses[0].pose.position.y;
+        int size = msg->poses.size()-1;
+        this->x_goal_pose=msg->poses[size].pose.position.x;
+        this->y_goal_pose=msg->poses[size].pose.position.y;
     }
 
     void local_callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
     {
         this->x_utm_pose=msg->data[0];
         this->y_utm_pose=msg->data[1];
+        std::cout<<this->x_utm_pose<<"************"<<this->y_utm_pose<<std::endl;
         cal_distance();
     }
 
@@ -58,7 +60,7 @@ class goal_pose_flag: public rclcpp::Node
         flag.data=false;
         
         // 얼마나 들어와야 flag True로 할건지 하이퍼 파라미터 설정 필요 임시로 1//
-        if(distance<1.0) flag.data=true;
+        if(distance<0.4) flag.data=true;
         else flag.data=false;
         pub_flag->publish(flag);
     }
