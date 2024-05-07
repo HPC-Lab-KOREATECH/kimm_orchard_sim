@@ -109,6 +109,12 @@ def generate_launch_description():
         executable='set_entity_state.py'
     )
 
+    goal_fl=Node(
+            package='kimm_orchard_sim', 
+            executable='goal_flag'
+        )
+
+
     # Include the Gazebo launch file
     gazebo_share = get_package_share_directory("gazebo_ros")
     gazebo = IncludeLaunchDescription(
@@ -220,6 +226,7 @@ def generate_launch_description():
         output='screen',
     )
 
+    
     # Include lio_sam run_loc.launch.py
     lio_sam_launch_file_path = join(
         get_package_share_directory('lio_sam'), # Replace 'lio_sam' with the correct package name if different
@@ -268,6 +275,7 @@ def generate_launch_description():
         spawn_entity,
         forward_position_controller,
         forward_velocity_controller,
+        goal_fl,
         # rqt_robot_steering,
         rviz,
         set_entity_state,

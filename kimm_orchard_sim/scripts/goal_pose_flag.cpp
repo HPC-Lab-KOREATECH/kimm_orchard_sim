@@ -44,14 +44,12 @@ class goal_pose_flag: public rclcpp::Node
     {
         this->x_utm_pose=msg->data[0];
         this->y_utm_pose=msg->data[1];
-        std::cout<<this->x_utm_pose<<"************"<<this->y_utm_pose<<std::endl;
         cal_distance();
     }
 
     void cal_distance()
     {
         this->distance=std::sqrt(std::pow(x_utm_pose-x_goal_pose,2)+std::pow(y_utm_pose-y_goal_pose,2));
-        std::cout<<this->distance<<std::endl;
     }
 
     void pub_callback() 
@@ -59,7 +57,7 @@ class goal_pose_flag: public rclcpp::Node
         std_msgs::msg::Bool flag;
         flag.data=false;
         
-        // 얼마나 들어와야 flag True로 할건지 하이퍼 파라미터 설정 필요 임시로 1//
+        // 얼마나 들어와야 flag True로 할건지 하이퍼 파라미터 설정 필요 임시로 0.4//
         if(distance<0.4) flag.data=true;
         else flag.data=false;
         pub_flag->publish(flag);
