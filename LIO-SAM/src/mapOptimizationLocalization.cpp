@@ -447,7 +447,10 @@ public:
 
         pcl::PointCloud<PointType>::Ptr out_cloud(new pcl::PointCloud<PointType>());
         pcl::PointCloud<PointType>::Ptr result(new pcl::PointCloud<PointType>());
-        pcl::transformPointCloud(*laserCloudSurfLast, *out_cloud, initialize_affine);
+        
+        pcl::PointCloud<PointType>::Ptr combinedCloudLast(new pcl::PointCloud<PointType>());
+        *combinedCloudLast = *laserCloudSurfLast + *laserCloudCornerLast;
+        pcl::transformPointCloud(*combinedCloudLast, *out_cloud, initialize_affine);
         // Align clouds
         icp.setInputSource(out_cloud);
         pcl::PointCloud<PointType>::Ptr combinedCloud(new pcl::PointCloud<PointType>());
