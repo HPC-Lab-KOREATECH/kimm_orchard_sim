@@ -60,7 +60,7 @@ def generate_launch_description():
     pcd_yaml_path = join(
         get_package_share_directory('pcd_cal'),
         'config',
-        'tree_grid_real.yaml'
+        'tree_grid_sim.yaml'
     )
 
     # Launch the robot_state_publisher node

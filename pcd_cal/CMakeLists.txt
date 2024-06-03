@@ -56,6 +56,32 @@ target_link_libraries( map_to_pcl_parser
   ${PCL_LIBRARIES}
 )
 
+add_executable(map_to_pcl_parser_sim src/map_to_pcl_parser_sim.cpp)
+ament_target_dependencies(
+  map_to_pcl_parser_sim 
+  rclcpp std_msgs
+  sensor_msgs
+  pcl_conversions
+  nav_msgs
+)
+target_link_libraries( map_to_pcl_parser_sim
+  ${Boost_SYSTEM_LIBRARY}
+  ${PCL_LIBRARIES}
+)
+
+add_executable(pcd_visualization src/pcd_visualization.cpp)
+ament_target_dependencies(
+  pcd_visualization 
+  rclcpp std_msgs
+  sensor_msgs
+  pcl_conversions
+  nav_msgs
+)
+target_link_libraries( pcd_visualization
+  ${Boost_SYSTEM_LIBRARY}
+  ${PCL_LIBRARIES}
+)
+
 add_executable(laser_scan src/laser_scan.cpp)
 ament_target_dependencies(
   laser_scan 
@@ -71,6 +97,8 @@ target_link_libraries( laser_scan
 
 install(TARGETS
   map_to_pcl_parser
+  map_to_pcl_parser_sim
+  pcd_visualization
   laser_scan
   DESTINATION lib/${PROJECT_NAME}
 )

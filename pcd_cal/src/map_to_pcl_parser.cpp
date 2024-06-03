@@ -50,6 +50,7 @@ public:
     this->declare_parameter<float>("linear_distribution_on_line", 1.5);
     this->declare_parameter<float>("grid_resolution", 0.05);
     this->declare_parameter<float>("occupancy_spread", 0.5);
+    this->declare_parameter<bool>("same_length_flag", true); // 기본값을 true로 설정
     this->declare_parameter<std::string>("tree_pcd_path", "/root/map_file/tree_pcd/tree.pcd");
     this->declare_parameter<std::string>("yaml_filename", "/root/ros2_ws/src/kimm_orchard_sim/pcd_cal/maps/map.yaml");
     this->declare_parameter<std::string>("map_filename", "/root/ros2_ws/src/kimm_orchard_sim/pcd_cal/maps/map.pgm");
@@ -71,6 +72,7 @@ public:
     tree_pcd_path = this->get_parameter("tree_pcd_path").as_string();
     yaml_filename = this->get_parameter("yaml_filename").as_string();
     map_filename = this->get_parameter("map_filename").as_string();
+    same_length_flag = this->get_parameter("same_length_flag").as_bool();
 
     RCLCPP_INFO(this->get_logger(), "clipping_minz: %f", clipping_minz);
     RCLCPP_INFO(this->get_logger(), "clipping_maxz: %f", clipping_maxz);
@@ -89,6 +91,7 @@ public:
     RCLCPP_INFO(this->get_logger(), "tree_pcd_path: %s", tree_pcd_path.c_str());
     RCLCPP_INFO(this->get_logger(), "yaml_filename: %s", yaml_filename.c_str());
     RCLCPP_INFO(this->get_logger(), "map_filename: %s", map_filename.c_str());
+    RCLCPP_INFO(this->get_logger(), "same_length_flag: %s", same_length_flag ? "true" : "false");
 
     publisher_pcd = this->create_publisher<sensor_msgs::msg::PointCloud2>("point_cloud", 10);
     publisher_pcd_filterd = this->create_publisher<sensor_msgs::msg::PointCloud2>("point_cloud_filtered", 10);
@@ -705,6 +708,76 @@ private:
         ++it;
       }
     }
+  } 
+
+  bool comparePoints(const pcl::PointXYZ& a, const pcl::PointXYZ& b, const pcl::PointXYZ& standard) {
+    float distA = std::pow(a.x - standard.x, 2) + std::pow(a.y - standard.y, 2) + std::pow(a.z - standard.z, 2);
+    float distB = std::pow(b.x - standard.x, 2) + std::pow(b.y - standard.y, 2) + std::pow(b.z - standard.z, 2);
+    return distA < distB;
+  }
+
+  pcl::PointCloud<pcl::PointXYZ>::Ptr filter_line(pcl::PointCloud<pcl::PointXYZ>::Ptr line_points) {
+    pcl::PointXYZ certificate_x_small = {-10000, -10000, 0};
+
+    std::sort(line_points->points.begin(), line_points->points.end(), [this, &certificate_x_small](const pcl::PointXYZ& a, const pcl::PointXYZ& b) {
+      return this->comparePoints(a, b, certificate_x_small);
+    });
+
+    for (auto& point : *line_points) {
+      // RCLCPP_INFO(this->get_logger(),"points:(x:%f,y:%f,z:%f)",point.x, point.y, point.z);
+    }
+
+    size_t point_cnt = line_points->points.size();
+    size_t middle_index = point_cnt / 2;
+
+    pcl::PointXYZ last_point = line_points->points[middle_index];
+
+    // 중간 인덱스 이후 부분
+    for (size_t i = middle_index + 1; i < point_cnt; i++) {
+        double distance = squaredDistance(line_points->points[i], last_point);
+        if (distance > 5 * linear_distribution_on_line) {
+            line_points->points.erase(line_points->points.begin() + i, line_points->points.end());
+            break;
+        }
+        last_point = line_points->points[i];
+    }
+
+    last_point = line_points->points[middle_index];
+    // 중간 인덱스 이전 부분
+    for (size_t i = middle_index; i > 0; i--) {
+        double distance = squaredDistance(line_points->points[i], last_point);
+        if (distance > 5 * linear_distribution_on_line) {
+            line_points->points.erase(line_points->points.begin(), line_points->points.begin() + i + 1);
+            break;
+        }
+        last_point = line_points->points[i];
+    }
+
+    return line_points;
+  }
+
+  pcl::PointCloud<pcl::PointXYZ>::Ptr generatePointsBetween(const pcl::PointXYZ& point1, const pcl::PointXYZ& point2, float distance) {
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+
+    float total_distance = std::sqrt(std::pow(point2.x - point1.x, 2) + 
+                                      std::pow(point2.y - point1.y, 2) + 
+                                      std::pow(point2.z - point1.z, 2));
+
+    int num_points = std::floor(total_distance / distance);
+
+    float dir_x = (point2.x - point1.x) / total_distance;
+    float dir_y = (point2.y - point1.y) / total_distance;
+    float dir_z = (point2.z - point1.z) / total_distance;
+
+    for (int i = 0; i <= num_points; ++i) {
+      pcl::PointXYZ point;
+      point.x = point1.x + dir_x * distance * i;
+      point.y = point1.y + dir_y * distance * i;
+      point.z = point1.z + dir_z * distance * i;
+      cloud->points.push_back(point);
+    }
+
+    return cloud;
   }
 
   pcl::PointCloud<pcl::PointXYZI>::Ptr find_grid(pcl::PointCloud<pcl::PointXYZI>::Ptr cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr tree_points, pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud) {
@@ -726,8 +799,8 @@ private:
 
     // RCLCPP_INFO(this->get_logger(), "a");
     //가장 많이 투표를 받은 그룹에 대한 PCA를 진행, 그 방향에 직각인 방향도 구함
-    linear_curve most_voted_curve = pca_fitting_linear_curve(cloudsById[max_id]);
-    linear_curve orthogonal_curve;
+    most_voted_curve = pca_fitting_linear_curve(cloudsById[max_id]);
+    orthogonal_curve;
     orthogonal_curve.eigen_vector[0] = -most_voted_curve.eigen_vector[1];
     orthogonal_curve.eigen_vector[1] = most_voted_curve.eigen_vector[0];
     orthogonal_curve.eigen_vector[2] = 0.0;
@@ -869,16 +942,16 @@ private:
     // RCLCPP_INFO(this->get_logger(), "4st point:%f, %f, %f", intersections[3].x, intersections[3].y, intersections[3].z);
 
     //real
-    // coordinate_origin_min = intersections[0]; //(x1, y1)
-    // coordinate_origin_max = intersections[3]; // (x2, y2)
-    // coordinate_origin_min_ = intersections[2]; // x좌표가 증가한 위치 (x2, y1)
-    // coordinate_origin_max_ = intersections[1]; // y좌표가 증가한 위치 (x1, y2)
+    coordinate_origin_min = intersections[0]; //(x1, y1)
+    coordinate_origin_max = intersections[3]; // (x2, y2)
+    coordinate_origin_min_ = intersections[1]; // x좌표가 증가한 위치 (x2, y1)
+    coordinate_origin_max_ = intersections[2]; // y좌표가 증가한 위치 (x1, y2)
 
     //sim
-    coordinate_origin_min = intersections[0]; //(x1, y1)
-    coordinate_origin_max = intersections[3]; // (x1, y2)
-    coordinate_origin_min_ = intersections[2]; // (x2, y1)
-    coordinate_origin_max_ = intersections[1]; // (x2, y2)
+    // coordinate_origin_min = intersections[0]; //(x1, y1)
+    // coordinate_origin_max = intersections[3]; // (x1, y2)
+    // coordinate_origin_min_ = intersections[2]; // (x2, y1)
+    // coordinate_origin_max_ = intersections[1]; // (x2, y2)
 
     // float most_normalize = squaredDistance(coordinate_origin_min_, coordinate_origin_min);
     // float orthogonal_normalize = squaredDistance(coordinate_origin_max_, coordinate_origin_min);
@@ -955,7 +1028,7 @@ private:
     for (const auto& pair : combined_key) {
       linear_curve line;
       line.eigen_vector = most_voted_curve.eigen_vector;
-      line.point = moveInDirection(first_center, orthogonal_curve.eigen_vector, pair.second);
+      line.point = moveInDirection(first_center, -orthogonal_curve.eigen_vector, pair.second);
 
       // RCLCPP_INFO(this->get_logger(), "point: %f,%f,%f", line.point.x, line.point.y, line.point.z);
 
@@ -972,6 +1045,9 @@ private:
     }
 
     // RCLCPP_INFO(this->get_logger(), "new_curve_on_grid: %d", new_curve_on_grid.size());
+    // RCLCPP_INFO(this->get_logger(), "new_curve_on_grid point: %f, %f, %f", new_curve_on_grid[0].point.x, new_curve_on_grid[0].point.y, new_curve_on_grid[0].point.z);
+    // RCLCPP_INFO(this->get_logger(), "new_curve_on_grid point: %f, %f, %f", new_curve_on_grid[1].point.x, new_curve_on_grid[1].point.y, new_curve_on_grid[1].point.z);
+    // RCLCPP_INFO(this->get_logger(), "new_curve_on_grid point: %f, %f, %f", new_curve_on_grid[2].point.x, new_curve_on_grid[2].point.y, new_curve_on_grid[2].point.z);
 
     cloudsById_grid = std::unordered_map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr>();
     pcl::PointCloud<pcl::PointXYZI>::Ptr grid_points(new pcl::PointCloud<pcl::PointXYZI>);
@@ -982,11 +1058,16 @@ private:
         Eigen::Vector3f crossProduct = A2B.cross(new_curve_on_grid[i].eigen_vector);
 
         float dist_between_dot2line = crossProduct.norm() / new_curve_on_grid[i].eigen_vector.norm();
+        // RCLCPP_INFO(this->get_logger(), "dist_between_dot2line: %f", dist_between_dot2line);
         
         if (min_dist > dist_between_dot2line) {
           min_dist = dist_between_dot2line;
-          if (min_dist < linear_distribution_on_line) {
-            pcl::PointXYZI pt_id(point.x, point.y, point.z, static_cast<float>(i));
+          if (min_dist < linear_distribution_on_line) {            
+            pcl::PointXYZI pt_id;
+            pt_id.x = point.x;
+            pt_id.y = point.y;
+            pt_id.z = point.z;
+            pt_id.intensity = static_cast<float>(i);
             grid_points -> push_back(pt_id);
             pcl::PointXYZ pt(point.x, point.y, point.z);
             if (cloudsById_grid.find(i) == cloudsById_grid.end()) {
@@ -1001,6 +1082,7 @@ private:
     std::vector<int> keys_to_erase;
 
     for (auto& pair : cloudsById_grid) {
+      // RCLCPP_INFO(this->get_logger(), "cloudsById_grid size: %ld", pair.second -> size());
       if (pair.second -> size() < 5) {
         keys_to_erase.push_back(pair.first);
       }
@@ -1011,52 +1093,66 @@ private:
     }
 
     pcl::PointCloud<pcl::PointXYZI>::Ptr mergedCloud(new pcl::PointCloud<pcl::PointXYZI>);
-    for (const auto& pair : cloudsById_grid) {
-      auto& cloud_ = pair.second;
-      for (auto& point : *cloud_) {
-        pcl::PointXYZI pt(point.x, point.y, point.z, static_cast<float>(pair.first));
-        mergedCloud->push_back(pt);
+
+    if (same_length_flag) {
+      pcl::PointCloud<pcl::PointXYZ>::Ptr point_interpolated(new pcl::PointCloud<pcl::PointXYZ>);
+      float distance = squaredDistance(coordinate_origin_min, coordinate_origin_max_);
+      int pts_cnt = distance / grid_resolution;
+
+      // RCLCPP_INFO(this->get_logger(), "distance: %f,pts_cnt: %d", distance, pts_cnt);
+
+      point_interpolation_merged.reset(new pcl::PointCloud<pcl::PointXYZI>);
+      pcl::PointXYZ last_pt = coordinate_origin_min;
+      for (int i = 0; i < pts_cnt; i++) {
+        pcl::PointXYZ pt = moveInDirection(last_pt, most_voted_curve.eigen_vector, grid_resolution);
+        point_interpolated -> push_back(pt);
+        last_pt = pt;
+      }
+
+      cnt = 0;
+      for (const auto& pair : combined_key) {
+        // RCLCPP_INFO(this->get_logger(), "rank_y_dist: %f", pair.second);
+        for (auto pt : *point_interpolated) {
+          pcl::PointXYZ y_pt = moveInDirection(pt, -orthogonal_curve.eigen_vector, pair.second);
+          pcl::PointXYZI y_pt_i(y_pt.x, y_pt.y, y_pt.z, cnt);
+          cnt++;
+          point_interpolation_merged -> push_back(y_pt_i);
+        }
+      }
+      for (const auto& pair : cloudsById_grid) {
+        auto& cloud_ = pair.second;
+        for (auto& point : *cloud_) {
+          pcl::PointXYZI pt;
+          pt.x = point.x;
+          pt.y = point.y;
+          pt.z = point.z;
+          pt.intensity = static_cast<float>(pair.first);
+
+          mergedCloud->push_back(pt);
+        }
+      }
+
+    } else {
+      point_interpolation_merged.reset(new pcl::PointCloud<pcl::PointXYZI>);
+      for (auto& pair : cloudsById_grid) {
+        auto& cloud_ = pair.second;
+        cloud_ = filter_line(cloud_);
+        const pcl::PointXYZ& start_point = cloud_->points.front();
+        const pcl::PointXYZ& end_point = cloud_->points.back();
+
+        pcl::PointCloud<pcl::PointXYZ>::Ptr interpolated_line = generatePointsBetween(start_point, end_point, grid_resolution);
+        pcl::PointCloud<pcl::PointXYZI>::Ptr interpolated_line_intensity(new pcl::PointCloud<pcl::PointXYZI>);
+        for (auto& point : *interpolated_line) {
+          pcl::PointXYZI pt = {point.x, point.y, point.z, static_cast<float>(pair.first)};
+          interpolated_line_intensity-> push_back(pt);
+        }
+        *point_interpolation_merged += *interpolated_line_intensity;
+        for (auto& point : *cloud_) {
+          pcl::PointXYZI pt(point.x, point.y, point.z, static_cast<float>(pair.first));
+          mergedCloud->push_back(pt);
+        }
       }
     }
-
-    pcl::PointCloud<pcl::PointXYZ>::Ptr point_interpolated(new pcl::PointCloud<pcl::PointXYZ>);
-    float distance = squaredDistance(coordinate_origin_min, coordinate_origin_max_);
-    int pts_cnt = distance / grid_resolution;
-
-    // RCLCPP_INFO(this->get_logger(), "distance: %f,pts_cnt: %d", distance, pts_cnt);
-
-    point_interpolation_merged.reset(new pcl::PointCloud<pcl::PointXYZI>);
-    pcl::PointXYZ last_pt = coordinate_origin_min;
-    for (int i = 0; i < pts_cnt; i++) {
-      pcl::PointXYZ pt = moveInDirection(last_pt, most_voted_curve.eigen_vector, grid_resolution);
-      point_interpolated -> push_back(pt);
-      last_pt = pt;
-    }
-
-    cnt = 0;
-    for (const auto& pair : combined_key) {
-      // RCLCPP_INFO(this->get_logger(), "rank_y_dist: %f", pair.second);
-      for (auto pt : *point_interpolated) {
-        pcl::PointXYZ y_pt = moveInDirection(pt, orthogonal_curve.eigen_vector, pair.second);
-        pcl::PointXYZI y_pt_i(y_pt.x, y_pt.y, y_pt.z, cnt);
-        cnt++;
-        point_interpolation_merged -> push_back(y_pt_i);
-      }
-    }
-    // for (auto curve : new_curve_on_grid) {
-
-    //   Eigen::Vector3f A2B((coordinate_origin_min.x + coordinate_origin_max_.x) / 2 - curve.point.x, 
-    //                       (coordinate_origin_min.y + coordinate_origin_max_.y) / 2 - curve.point.y, 0.0);
-    //   Eigen::Vector3f crossProduct = A2B.cross(curve.eigen_vector);
-
-    //   float dist_between_dot2line = crossProduct.norm() / curve.eigen_vector.norm();
-    //   RCLCPP_INFO(this->get_logger(), "dist:%f", dist_between_dot2line);
-
-    //   for (auto point : *point_interpolated) {
-    //     pcl::PointXYZ pt(point.x + normalized_y_dx * dist_between_dot2line, point.y + normalized_y_dy * dist_between_dot2line, 0.0);
-    //     point_interpolation_merged -> push_back(pt);
-    //   }
-    // }
 
     float width = 150.0;
     float height = 150.0;
@@ -1145,11 +1241,15 @@ private:
   float linear_distribution_on_line;
   float grid_resolution;
   float occupancy_spread;
+  bool same_length_flag;
 
   std::unordered_map<int, int> element_to_set;
   std::unordered_map<int, pcl::PointCloud<pcl::PointXYZI>::Ptr> cloudsById;
   std::unordered_map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudsById_grid;
   nav_msgs::msg::OccupancyGrid grid_2d;
+
+  linear_curve most_voted_curve;
+  linear_curve orthogonal_curve;
 
   pcl::PointCloud<pcl::PointXYZI>::Ptr point_interpolation_merged;
 };

@@ -28,6 +28,8 @@ pcd_publisher:
     grid_resolution: 0.05
     occupancy_spread: 0.01
 
+    same_length_flag: true
+
     yaml_filename: "/root/ros2_ws/src/kimm_orchard_sim/pcd_cal/maps/map123.yaml"
     map_filename: "/root/ros2_ws/src/kimm_orchard_sim/pcd_cal/maps/map123.pgm"
 

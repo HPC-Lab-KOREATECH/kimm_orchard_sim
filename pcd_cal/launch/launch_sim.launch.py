@@ -35,7 +35,7 @@ def generate_launch_description():
     return LaunchDescription([
         Node(
             package='pcd_cal',
-            executable='map_to_pcl_parser',
+            executable='map_to_pcl_parser_sim',
             name='pcd_publisher',
             parameters= [yaml_path]
         ),
