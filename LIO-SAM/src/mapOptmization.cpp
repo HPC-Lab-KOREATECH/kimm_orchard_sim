@@ -1326,7 +1326,7 @@ public:
             kdtreeCornerFromMap->setInputCloud(laserCloudCornerFromMapDS);
             kdtreeSurfFromMap->setInputCloud(laserCloudSurfFromMapDS);
 
-            for (int iterCount = 0; iterCount < 30; iterCount++)
+            for (int iterCount = 0; iterCount < 50; iterCount++) // 30 sungmin
             {
                 laserCloudOri->clear();
                 coeffSel->clear();
@@ -1489,7 +1489,7 @@ public:
                     continue;
                 if (abs(gps_x) < 1e-6 && abs(gps_y) < 1e-6)
                     continue;
-
+                // std::cout << gps_x << " " << gps_y << " " << std::endl;
                 // Add GPS every a few meters
                 PointType curGPSPoint;
                 curGPSPoint.x = gps_x;
@@ -1696,7 +1696,7 @@ public:
         tf2::Stamped<tf2::Transform> temp_odom_to_lidar(t_odom_to_lidar, time_point, odometryFrame);
         geometry_msgs::msg::TransformStamped trans_odom_to_lidar;
         tf2::convert(temp_odom_to_lidar, trans_odom_to_lidar);
-        trans_odom_to_lidar.child_frame_id = "lidar_link";
+        trans_odom_to_lidar.child_frame_id = "base_footprint";
         br->sendTransform(trans_odom_to_lidar);
 
         // Publish odometry for ROS (incremental)

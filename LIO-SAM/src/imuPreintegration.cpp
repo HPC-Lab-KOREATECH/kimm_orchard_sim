@@ -491,6 +491,7 @@ public:
 
     void imuHandler(const sensor_msgs::msg::Imu::SharedPtr imu_raw)
     {
+
         std::lock_guard<std::mutex> lock(mtx);
 
         sensor_msgs::msg::Imu thisImu = imuConverter(*imu_raw);
@@ -537,6 +538,8 @@ public:
         odometry.twist.twist.angular.y = thisImu.angular_velocity.y + prevBiasOdom.gyroscope().y();
         odometry.twist.twist.angular.z = thisImu.angular_velocity.z + prevBiasOdom.gyroscope().z();
         pubImuOdometry->publish(odometry);
+        // RCLCPP_WARN(get_logger(), "publish imu");
+
     }
 };
 

@@ -30,7 +30,8 @@ ekf_gps:
     # -------------------------------------
     # External IMU:
     # -------------------------------------
-    imu0: /imu_hpc/out # to be enu coordinate ************************************ 
+    imu0: /imu_enu # /imu_hpc 
+    # to be enu coordinate ************************************ 
     # make sure the input is aligned with ROS REP105. "imu_correct" is manually transformed by myself. EKF can also transform the data using tf between your imu and base_link
     imu0_config: [false, false, false,
                   true,  true,  true,

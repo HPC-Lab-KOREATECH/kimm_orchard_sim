@@ -437,25 +437,28 @@ public:
         }
 
         static pcl::IterativeClosestPoint<PointType, PointType> icp;
-        icp.setMaxCorrespondenceDistance(20);
-        icp.setMaximumIterations(10000);
-        icp.setTransformationEpsilon(1e-10);
-        icp.setEuclideanFitnessEpsilon(1e-10);
-        //icp.setRANSACIterations(0);
+        icp.setMaxCorrespondenceDistance(3.0); // if gps localization,  set 30
+        icp.setMaximumIterations(1000);
+        icp.setTransformationEpsilon(1e-6);
+        icp.setEuclideanFitnessEpsilon(1e-6);
+        icp.setRANSACIterations(2);
 
         Eigen::Affine3f initialize_affine = trans2Affine3f(initialize_pose);
 
-        pcl::PointCloud<PointType>::Ptr out_cloud(new pcl::PointCloud<PointType>());
-        pcl::PointCloud<PointType>::Ptr result(new pcl::PointCloud<PointType>());
-        
         pcl::PointCloud<PointType>::Ptr combinedCloudLast(new pcl::PointCloud<PointType>());
         *combinedCloudLast = *laserCloudSurfLast + *laserCloudCornerLast;
-        pcl::transformPointCloud(*combinedCloudLast, *out_cloud, initialize_affine);
-        // Align clouds
-        icp.setInputSource(out_cloud);
-        pcl::PointCloud<PointType>::Ptr combinedCloud(new pcl::PointCloud<PointType>());
-        *combinedCloud = *laserCloudSurfFromMap + *laserCloudSurfFromMap;
-        icp.setInputTarget(combinedCloud);
+        pcl::PointCloud<PointType>::Ptr transformedCombinedCloudLast(new pcl::PointCloud<PointType>());
+        pcl::transformPointCloud(*combinedCloudLast, *transformedCombinedCloudLast, initialize_affine);
+        icp.setInputSource(transformedCombinedCloudLast);
+
+
+
+
+        pcl::PointCloud<PointType>::Ptr combinedCloudMap(new pcl::PointCloud<PointType>());
+        *combinedCloudMap = *laserCloudSurfFromMap + *laserCloudCornerFromMap;
+        icp.setInputTarget(combinedCloudMap);
+
+        pcl::PointCloud<PointType>::Ptr result(new pcl::PointCloud<PointType>());
         icp.align(*result);
 
         Eigen::Affine3f correctionLidarFrame;
@@ -471,12 +474,8 @@ public:
         transformTobeMapped[4] = y;
         transformTobeMapped[5] = z;
 
-        pcl::PointCloud<PointType>::Ptr cloudOut(new pcl::PointCloud<PointType>());
-        PointTypePose thisPose6D = trans2PointTypePose(transformTobeMapped);
-        *cloudOut += *transformPointCloud(laserCloudSurfLast, &thisPose6D);
-        //publishCloud(pubRecentKeyFrame, cloudOut, timeLaserInfoStamp, mapFrame); // for debugging
-
-        if (icp.hasConverged() && icp.getFitnessScore() < 0.3)//< 0.3)
+        publishCloud(pubRecentKeyFrame, result, timeLaserInfoStamp, mapFrame); // for debugging
+        if (icp.hasConverged() && icp.getFitnessScore() < 0.3) //< 0.3)
         {
             RCLCPP_INFO(rclcpp::get_logger("globalLocalize"), "initialize pose successful");
             system_initialized = true;
@@ -1465,7 +1464,7 @@ public:
             kdtreeCornerFromMap->setInputCloud(laserCloudCornerFromMapDS);
             kdtreeSurfFromMap->setInputCloud(laserCloudSurfFromMapDS);
 
-            for (int iterCount = 0; iterCount < 30; iterCount++)
+            for (int iterCount = 0; iterCount < 50; iterCount++) // 30 sungmin
             {
                 laserCloudOri->clear();
                 coeffSel->clear();

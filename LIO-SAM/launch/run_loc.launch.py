@@ -34,19 +34,33 @@ def generate_launch_description():
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
-            arguments='0.0 0.0 0.0 0.0 0.0 0 map odom'.split(' '),
+            arguments='0.0 0.0 0.3 0.0 0.0 0 map odom'.split(' '),
             parameters=[parameter_file],
             output='screen'
             ),
         # Node(
-        #     package='robot_state_publisher',
-        #     executable='robot_state_publisher',
-        #     name='robot_state_publisher_tf_static',
-        #     output='screen',
-        #     parameters=[{
-        #         'robot_description': Command(['xacro', ' ', xacro_path])
-        #     }]
+        #     package='tf2_ros',
+        #     executable='static_transform_publisher',
+        #     arguments='0.0 0.0 0.0 0.0 0.0 0 base_link gps'.split(' '),
+        #     parameters=[parameter_file],
+        #     output='screen'
+        #     ),
+        # Node(
+        #     package='lio_sam',
+        #     executable='lio_sam_simpleGpsOdom',
+        #     name='lio_sam_simpleGpsOdom',
+        #     parameters=[parameter_file],
+        #     output='screen'
         # ),
+        Node(
+            package='robot_state_publisher',
+            executable='robot_state_publisher',
+            name='robot_state_publisher_tf_static',
+            output='screen',
+            parameters=[{
+                'robot_description': Command(['xacro', ' ', xacro_path])
+            }]
+        ),
         Node(
             package='lio_sam',
             executable='lio_sam_imuPreintegration',
@@ -75,13 +89,13 @@ def generate_launch_description():
             parameters=[parameter_file],
             output='screen'
         ),
-        Node(
-            package='lio_sam',
-            executable='lio_sam_gps_converter',
-            name='lio_sam_gps_converter',
-            parameters=[parameter_file],
-            output='screen'
-        ),
+        # Node(
+        #     package='lio_sam',
+        #     executable='lio_sam_gps_converter',
+        #     name='lio_sam_gps_converter',
+        #     parameters=[parameter_file],
+        #     output='screen'
+        # ),
         Node(
             package='rviz2',
             executable='rviz2',
@@ -106,8 +120,8 @@ def generate_launch_description():
             parameters=[parameter_file_for_robot_localzation],
             respawn=True,
             remappings=[
-                ('imu', 'imu_hpc/out'),
-                ('gps/fix', 'gps/fix'),
+                ('imu', 'imu_hpc'),
+                ('gps/fix', 'fix'),
                 ('odometry/filtered', 'odometry/navsat'),
             ],
         )

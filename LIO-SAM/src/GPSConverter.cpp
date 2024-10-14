@@ -33,7 +33,7 @@ using namespace std;
 class GNSSOdom : public ParamServer {
  public:
   GNSSOdom(const rclcpp::NodeOptions & options) : ParamServer("lio_sam_gps_converter", options) {
-    sleep(2); // wait starting robot_localization
+    sleep(3); // wait starting robot_localization
 
     if(isLocalizationMode){
       gpsSub = create_subscription<sensor_msgs::msg::NavSatFix>(gpsNaiveTopic, qos, std::bind(&GNSSOdom::GNSSCB, this, std::placeholders::_1));
@@ -85,9 +85,11 @@ class GNSSOdom : public ParamServer {
       Eigen::Vector3d ecef = gtools.LLA2ECEF(lla);
       Eigen::Vector3d enu = gtools.ECEF2ENU(ecef);
       
-      tf2::Vector3 position(enu(0), enu(1), 0); // sim utm
-      tf2::Matrix3x3 odom2utm(odom2UTM);
-      position = odom2utm.transpose() * position;
+      // tf2::Vector3 position(enu(0), enu(1), 0); // sim utm
+      // tf2::Matrix3x3 odom2utm(odom2UTM);
+      // position = odom2utm.transpose() * position;
+      
+      tf2::Vector3 position(-enu(1), enu(0), 0); // seu
 
       auto poseMsg = geometry_msgs::msg::Pose();
       poseMsg.position.x = position.getX(); 
@@ -124,7 +126,7 @@ class GNSSOdom : public ParamServer {
 
   void readFile(){
     float initial_lla[3];
-    std::ifstream initial_info(map_dir+"initial_LLA_orientation");
+    std::ifstream initial_info(map_dir + "initial_LLA_orientation");
     if (!initial_info.is_open()) {
         std::cerr << "Failed to open file." << std::endl;
         exit(1);
@@ -190,12 +192,13 @@ class GNSSOdom : public ParamServer {
     Eigen::Vector3d ecef = gtools.LLA2ECEF(lla);
     Eigen::Vector3d enu = gtools.ECEF2ENU(ecef);
     
-    //tf2::Vector3 position(-enu(1), enu(0), 0); // seu
+     tf2::Vector3 position(-enu(1), enu(0), 0); // seu
     
-    tf2::Vector3 position(enu(0), enu(1), 0); // sim utm
-    tf2::Matrix3x3 odom2utm(odom2UTM);
-    position = odom2utm.transpose() * position;
+    // tf2::Vector3 position(enu(0), enu(1), 0); // sim utm
+    // tf2::Matrix3x3 odom2utm(odom2UTM);
+    // position = odom2utm.transpose() * position;
 
+    //tf2::Vector3 position(-enu(1), enu(0), 0); // seu
 
     auto message = std::make_shared<geometry_msgs::msg::PoseWithCovarianceStamped>();
 
