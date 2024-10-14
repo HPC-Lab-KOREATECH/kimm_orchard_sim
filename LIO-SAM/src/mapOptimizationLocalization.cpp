@@ -437,11 +437,11 @@ public:
         }
 
         static pcl::IterativeClosestPoint<PointType, PointType> icp;
-        icp.setMaxCorrespondenceDistance(3.0); // if gps localization,  set 30
-        icp.setMaximumIterations(1000);
-        icp.setTransformationEpsilon(1e-6);
-        icp.setEuclideanFitnessEpsilon(1e-6);
-        icp.setRANSACIterations(2);
+        icp.setMaxCorrespondenceDistance(2.0); // if gps localization,  set 30
+        icp.setMaximumIterations(100);
+        icp.setTransformationEpsilon(1e-4);
+        icp.setEuclideanFitnessEpsilon(1e-4);
+        icp.setRANSACIterations(0);
 
         Eigen::Affine3f initialize_affine = trans2Affine3f(initialize_pose);
 
