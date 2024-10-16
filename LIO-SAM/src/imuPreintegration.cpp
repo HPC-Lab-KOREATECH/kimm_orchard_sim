@@ -175,8 +175,6 @@ public:
 
     std::mutex mtx;
 
-    rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr sub_initial_pose;
-
     rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr subImu;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr subOdometry;
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pubImuOdometry;
@@ -223,18 +221,9 @@ public:
     gtsam::Pose3 imu2Lidar = gtsam::Pose3(gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(-extTrans.x(), -extTrans.y(), -extTrans.z()));
     gtsam::Pose3 lidar2Imu = gtsam::Pose3(gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(extTrans.x(), extTrans.y(), extTrans.z()));
 
-    // localization
-    float initialPose[7];
-    bool initialized = false;
-    // ----
-
     IMUPreintegration(const rclcpp::NodeOptions & options) :
             ParamServer("lio_sam_imu_preintegration", options)
     {
-        sub_initial_pose = create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
-            "/initialpose", qos,
-            std::bind(&IMUPreintegration::initialposeHandler, this, std::placeholders::_1));
-
         callbackGroupImu = create_callback_group(
             rclcpp::CallbackGroupType::MutuallyExclusive);
         callbackGroupOdom = create_callback_group(
@@ -273,25 +262,6 @@ public:
         imuIntegratorOpt_ = new gtsam::PreintegratedImuMeasurements(p, prior_imu_bias); // setting up the IMU integration for optimization        
     }
 
-
-
-    void initialposeHandler(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msgIn) 
-    {
-        initialPose[0] = msgIn->pose.pose.position.x;
-        initialPose[1] = msgIn->pose.pose.position.y;
-        initialPose[2] = msgIn->pose.pose.position.z;
-
-        initialPose[3] = msgIn->pose.pose.orientation.x;
-        initialPose[4] = msgIn->pose.pose.orientation.y;
-        initialPose[5] = msgIn->pose.pose.orientation.z;
-        initialPose[6] = msgIn->pose.pose.orientation.w;
-
-        initialized = true;
-
-        resetOptimization();
-        resetParams();
-
-    }
     void resetOptimization()
     {
         gtsam::ISAM2Params optParameters;
@@ -350,12 +320,7 @@ public:
                 else
                     break;
             }
-            if(initialized){
-                initialized = false;
-                lidarPose = gtsam::Pose3(gtsam::Rot3::Quaternion(initialPose[6], initialPose[3], initialPose[4], initialPose[5]), 
-                                gtsam::Point3(initialPose[0], initialPose[1], initialPose[2]));
-            }
-
+            // initial pose
             prevPose_ = lidarPose.compose(lidar2Imu);
             gtsam::PriorFactor<gtsam::Pose3> priorPose(X(0), prevPose_, priorPoseNoise);
             graphFactors.add(priorPose);
@@ -526,7 +491,6 @@ public:
 
     void imuHandler(const sensor_msgs::msg::Imu::SharedPtr imu_raw)
     {
-
         std::lock_guard<std::mutex> lock(mtx);
 
         sensor_msgs::msg::Imu thisImu = imuConverter(*imu_raw);
@@ -573,8 +537,6 @@ public:
         odometry.twist.twist.angular.y = thisImu.angular_velocity.y + prevBiasOdom.gyroscope().y();
         odometry.twist.twist.angular.z = thisImu.angular_velocity.z + prevBiasOdom.gyroscope().z();
         pubImuOdometry->publish(odometry);
-        // RCLCPP_WARN(get_logger(), "publish imu");
-
     }
 };
 

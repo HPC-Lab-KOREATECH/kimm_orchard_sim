@@ -479,6 +479,7 @@ public:
         {
             RCLCPP_INFO(rclcpp::get_logger("globalLocalize"), "initialize pose successful");
             system_initialized = true;
+
             return true;
         } 
         else
@@ -488,6 +489,8 @@ public:
             system_initialized = false;
             return false;
         }
+
+
     }
     // ----------------------------------------------------------------------
 
@@ -960,12 +963,12 @@ public:
         // initialization
         if (cloudKeyPoses3D->points.empty())
         {
-            transformTobeMapped[0] = cloudInfo.imu_roll_init;
-            transformTobeMapped[1] = cloudInfo.imu_pitch_init;
-            transformTobeMapped[2] = cloudInfo.imu_yaw_init;
+            // transformTobeMapped[0] = cloudInfo.imu_roll_init;
+            // transformTobeMapped[1] = cloudInfo.imu_pitch_init;
+            // transformTobeMapped[2] = cloudInfo.imu_yaw_init;
 
-            if (!useImuHeadingInitialization)
-                transformTobeMapped[2] = 0;
+            // if (!useImuHeadingInitialization)
+            //     transformTobeMapped[2] = 0;
 
             lastImuTransformation = pcl::getTransformation(0, 0, 0, cloudInfo.imu_roll_init, cloudInfo.imu_pitch_init, cloudInfo.imu_yaw_init); // save imu before return;
             return;
@@ -1000,15 +1003,13 @@ public:
         // use imu incremental estimation for pose guess (only rotation)
         if (cloudInfo.imu_available == true)
         {   
-            // localization -------------------------------------
-            // Eigen::Affine3f transBack = pcl::getTransformation(0, 0, 0, cloudInfo.imu_roll_init, cloudInfo.imu_pitch_init, cloudInfo.imu_yaw_init);
-            // Eigen::Affine3f transIncre = lastImuTransformation.inverse() * transBack;
+            Eigen::Affine3f transBack = pcl::getTransformation(0, 0, 0, cloudInfo.imu_roll_init, cloudInfo.imu_pitch_init, cloudInfo.imu_yaw_init);
+            Eigen::Affine3f transIncre = lastImuTransformation.inverse() * transBack;
 
-            // Eigen::Affine3f transTobe = trans2Affine3f(transformTobeMapped);
-            // Eigen::Affine3f transFinal = transTobe * transIncre;
-            // pcl::getTranslationAndEulerAngles(transFinal, transformTobeMapped[3], transformTobeMapped[4], transformTobeMapped[5], 
-            //                                               transformTobeMapped[0], transformTobeMapped[1], transformTobeMapped[2]);
-            // --------------------------------------------------
+            Eigen::Affine3f transTobe = trans2Affine3f(transformTobeMapped);
+            Eigen::Affine3f transFinal = transTobe * transIncre;
+            pcl::getTranslationAndEulerAngles(transFinal, transformTobeMapped[3], transformTobeMapped[4], transformTobeMapped[5], 
+                                                          transformTobeMapped[0], transformTobeMapped[1], transformTobeMapped[2]);
 
             lastImuTransformation = pcl::getTransformation(0, 0, 0, cloudInfo.imu_roll_init, cloudInfo.imu_pitch_init, cloudInfo.imu_yaw_init); // save imu before return;
             return;
@@ -1464,7 +1465,7 @@ public:
             kdtreeCornerFromMap->setInputCloud(laserCloudCornerFromMapDS);
             kdtreeSurfFromMap->setInputCloud(laserCloudSurfFromMapDS);
 
-            for (int iterCount = 0; iterCount < 50; iterCount++) // 30 sungmin
+            for (int iterCount = 0; iterCount < 30; iterCount++) 
             {
                 laserCloudOri->clear();
                 coeffSel->clear();
