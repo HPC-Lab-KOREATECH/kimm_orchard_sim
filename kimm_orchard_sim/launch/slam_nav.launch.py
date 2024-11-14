@@ -249,7 +249,13 @@ def generate_launch_description():
         launch_arguments={'use_sim_time': 'True'}.items() # Passing the 'use_sim_time' argument as True
     )
 
-
+    state_machine = Node(
+        package='kimm_orchard_sim',
+        executable='state_machine',
+        name='mappub',
+        parameters=[{"use_sim_time": use_sim_time}],
+        output='screen',
+    )
     
     return LaunchDescription([
         # Declare launch arguments
@@ -275,7 +281,7 @@ def generate_launch_description():
         spawn_entity,
         forward_position_controller,
         forward_velocity_controller,
-        goal_fl,
+        # goal_fl,
         # rqt_robot_steering,
         rviz,
         set_entity_state,
@@ -293,5 +299,6 @@ def generate_launch_description():
         local_path_pub,
         # lio_sam_launch,
         # nav2_bringup_launch
+        state_machine
     ])
     

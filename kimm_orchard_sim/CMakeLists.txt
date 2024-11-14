@@ -5,13 +5,20 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 
 add_executable(goal_flag scripts/goal_pose_flag.cpp)
-
 ament_target_dependencies(goal_flag rclcpp std_msgs nav_msgs)
-
 install(TARGETS
   goal_flag
+  DESTINATION lib/${PROJECT_NAME})
+
+add_executable(state_machine scripts/state_machine.cpp)
+ament_target_dependencies(state_machine rclcpp std_msgs nav_msgs geometry_msgs tf2 tf2_geometry_msgs)
+install(TARGETS
+  state_machine
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY map config launch meshes models urdf worlds rviz scripts
